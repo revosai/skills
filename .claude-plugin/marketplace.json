@@ -15,13 +15,13 @@
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/create-connections",
-        "./skills/load-sample-data",
-        "./skills/explore-lakehouse",
-        "./skills/create-dbt-transformations",
-        "./skills/create-cubes",
-        "./skills/query-semantic-model",
-        "./skills/visualize-semantic-model"
+        "./data-engineering/create-connections",
+        "./data-engineering/load-sample-data",
+        "./data-engineering/explore-lakehouse",
+        "./data-engineering/create-dbt-transformations",
+        "./data-engineering/create-cubes",
+        "./data-engineering/query-semantic-model",
+        "./data-engineering/visualize-semantic-model"
       ]
     }
   ]
