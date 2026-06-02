@@ -1,5 +1,5 @@
 {
-  "name": "revos-skills",
+  "name": "revos",
   "owner": {
     "name": "RevOS",
     "email": "dev@revos.ai"
@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "revos-data-engineering",
+      "name": "data-engineering",
       "description": "End-to-end RevOS data-engineering workflow as Agent Skills: connect sources, load sample data, explore the BigQuery lakehouse, author dbt silver/gold transformations, define Cube.dev semantic models, and query or visualize them.",
       "source": "./",
       "strict": false,

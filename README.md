@@ -21,7 +21,7 @@ Public, version-controlled home of the [RevOS](https://revos.ai) data-engineerin
 
 ```bash
 /plugin marketplace add revosai/skills
-/plugin install revos-data-engineering@revos-skills
+/plugin install data-engineering@revos
 ```
 
 ### skills.sh (`npx skills`)
