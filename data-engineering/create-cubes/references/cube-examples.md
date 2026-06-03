@@ -9,6 +9,7 @@
 - [Refresh Key Variants](#refresh-key-variants)
 - [Type Mapping](#type-mapping)
 - [Measure Suggestions](#measure-suggestions)
+- [Filtered Measures](#filtered-measures)
 - [Common Mistakes](#common-mistakes)
 
 ---
@@ -19,55 +20,56 @@
 apiVersion: revos/v1
 kind: Cube
 metadata:
-  name: hubspot_companies
+  name: contacts
 spec:
-  sql_table: "`<dataset>.gold_hubspot_companies`"
-
-  meta:
-    abConnectionId: conn_01HZX7K9P6QABCD
-    nameDimension: properties_name
-    icon: companies
-
   joins:
-    companies_deals:
-      sql: "${CUBE}.id = ${companies_deals}.company_id"
-      relationship: one_to_many
-
+    customers:
+      sql: ${CUBE}.company_id = ${customers}.hubspot_company_id
+      relationship: many_to_one
   measures:
     count:
       type: count
-
-    total_deal_value:
-      sql: "${CUBE}.properties_hs_total_deal_value"
-      type: sum
-
+      description: Total number of HubSpot contacts.
+    distinct_companies:
+      sql: ${CUBE}.company_id
+      type: count_distinct
+      description: Number of distinct companies with at least one contact.
+  sql_table: "your-project.your-dataset.gold_contacts"
   dimensions:
-    id:
-      sql: "${CUBE}.id"
+    contact_id:
+      sql: ${CUBE}.contact_id
       type: string
+      public: true
+      description: Unique HubSpot contact ID. Primary key.
       primary_key: true
-
-    properties_name:
-      sql: "${CUBE}.properties_name"
+    email:
+      sql: ${CUBE}.email
       type: string
-
-    airbyte_extracted_at:
-      sql: "${CUBE}._airbyte_extracted_at"
+      description: Contact's email address as stored in HubSpot.
+    company_id:
+      sql: ${CUBE}.company_id
+      type: string
+      description: HubSpot company ID linking this contact to a customer account.
+    created_at:
+      sql: ${CUBE}.created_at
       type: time
-
+      description: Timestamp when the contact record was created in HubSpot.
+  description: >
+    HubSpot contacts linked to customer accounts. One row per contact.
+    Source: gold_contacts.
   refresh_key:
-    sql: "SELECT MAX(_airbyte_extracted_at) FROM `<dataset>.gold_hubspot_companies`"
+    sql: SELECT MAX(_airbyte_extracted_at) FROM your-project.your-dataset.gold_contacts
 ```
 
 Notes:
 
 1. `metadata.name` is the single source of truth for the cube identifier — it's used as the filename slug, IaC address, and Cube.dev cube name referenced by `${CUBE}` and joins.
-2. Cube name is `hubspot_companies` (no `gold_` prefix); `spec.sql_table` references `gold_hubspot_companies` (with `gold_` prefix), in backticks.
-3. The join references `${companies_deals}` — the cube name of a bridge cube defined in `cubes/companies_deals.yml`.
-4. Only `_airbyte_extracted_at` is exposed from Airbyte metadata, as `airbyte_extracted_at`.
-5. `spec.refresh_key.sql` uses the same fully qualified table name as `spec.sql_table`.
-6. `spec.meta.abConnectionId` ties this cube back to the Connection that ingests its raw data — get the id from `revos connections list --json`. Omit it for cubes built on purely local models with no upstream connection.
-7. `spec.meta.nameDimension` is the **short** name of the dimension that represents this entity's human-readable label — here `properties_name`, referenced as `${CUBE}.properties_name`. The dimension must exist under `spec.dimensions`. The frontend reads `meta.nameDimension` to pick the "name" column when this cube is added as a table. Omit `nameDimension` for cubes that don't have a single natural label (bridges, fact tables, event logs). `meta` currently allows only `abConnectionId` and `nameDimension`; omit the whole `meta` block if neither applies.
+2. Cube name is `contacts` (no `gold_` prefix); `spec.sql_table` references `gold_contacts` (with `gold_` prefix).
+3. Only `_airbyte_extracted_at` is exposed from Airbyte metadata, as `airbyte_extracted_at`.
+4. `spec.refresh_key.sql` uses the same fully qualified table name as `spec.sql_table`.
+5. Every measure and dimension includes a `description:` field (see rule 10).
+6. Primary key dimension has both `primary_key: true` and `public: true` (see rule 11).
+7. `spec.meta` (`abConnectionId`, `nameDimension`, `icon`) is omitted here — add it when applicable per rules 12–14.
 
 ---
 
@@ -77,55 +79,41 @@ Notes:
 apiVersion: revos/v1
 kind: Cube
 metadata:
-  name: companies_deals
+  name: deals_contacts
 spec:
-  sql_table: "`<dataset>.gold_companies_deals`"
-  public: false
-
-  meta:
-    abConnectionId: conn_01HZX7K9P6QABCD
-
   joins:
-    hubspot_companies:
+    deals:
+      sql: ${CUBE}.deal_id = ${deals}.deal_id
       relationship: many_to_one
-      sql: "${CUBE}.company_id = ${hubspot_companies}.id"
-
-    hubspot_deals:
+    contacts:
+      sql: ${CUBE}.contact_id = ${contacts}.contact_id
       relationship: many_to_one
-      sql: "${CUBE}.deal_id = ${hubspot_deals}.id"
-
   measures:
     count:
       type: count
-
+      description: Total number of deal-contact associations.
+  sql_table: "your-project.your-dataset.gold_deals_contacts"
+  public: false
   dimensions:
     id:
-      sql: "CONCAT(${CUBE}.deal_id, '-', ${CUBE}.company_id)"
+      sql: CONCAT(${CUBE}.deal_id, '-', ${CUBE}.contact_id)
       type: string
+      public: true
+      description: Synthetic primary key combining deal_id and contact_id.
       primary_key: true
-
     deal_id:
-      sql: "${CUBE}.deal_id"
+      sql: ${CUBE}.deal_id
       type: string
-
-    company_id:
-      sql: "${CUBE}.company_id"
+      description: HubSpot deal ID (foreign key to deals).
+    contact_id:
+      sql: ${CUBE}.contact_id
       type: string
-
-    airbyte_extracted_at:
-      sql: "${CUBE}._airbyte_extracted_at"
-      type: time
-
+      description: HubSpot contact ID (foreign key to contacts).
+  description: >
+    Bridge table linking deals to contacts. One row per deal-contact association.
+    Internal join model — not exposed in the UI.
   refresh_key:
-    sql: "SELECT MAX(_airbyte_extracted_at) FROM `<dataset>.gold_companies_deals`"
-```
-
-If the bridge model lacks `_airbyte_extracted_at`, omit that dimension and use:
-
-```yaml
-spec:
-  refresh_key:
-    every: 1 hour
+    sql: SELECT MAX(_airbyte_extracted_at) FROM your-project.your-dataset.gold_deals_contacts
 ```
 
 ---
@@ -164,7 +152,7 @@ Direction is always from the perspective of the current cube.
 ### Direct many-to-one / one-to-many
 
 ```yaml
-# In cubes/hubspot_deals.yml
+# In deals.yaml
 spec:
   joins:
     hubspot_companies:
@@ -173,7 +161,7 @@ spec:
 ```
 
 ```yaml
-# In cubes/hubspot_companies.yml
+# In customers.yaml
 spec:
   joins:
     hubspot_deals:
@@ -184,7 +172,7 @@ spec:
 ### Connector path (products -> clients -> addresses)
 
 ```yaml
-# In cubes/products.yml
+# In products.yaml
 spec:
   joins:
     clients:
@@ -193,7 +181,7 @@ spec:
 ```
 
 ```yaml
-# In cubes/clients.yml
+# In clients.yaml
 spec:
   joins:
     products:
@@ -205,7 +193,7 @@ spec:
 ```
 
 ```yaml
-# In cubes/addresses.yml
+# In addresses.yaml
 spec:
   joins:
     clients:
@@ -216,7 +204,7 @@ spec:
 ### Bridge joins (both parents reference bridge)
 
 ```yaml
-# In cubes/hubspot_companies.yml
+# In customers.yaml
 spec:
   joins:
     companies_deals:
@@ -225,7 +213,7 @@ spec:
 ```
 
 ```yaml
-# In cubes/hubspot_deals.yml
+# In deals.yaml
 spec:
   joins:
     companies_deals:
@@ -268,7 +256,12 @@ spec:
   refresh_key:
     sql: "SELECT MAX(created_at) FROM `<dataset>.<gold_model>`"
 
-# 4. Last resort — ONLY when the table has no timestamp column at all
+# 4. Snapshot / derived table with no source timestamp
+spec:
+  refresh_key:
+    sql: SELECT CURRENT_DATE()
+
+# 5. Last resort — ONLY when the table has no timestamp column at all
 # Add a comment explaining why:
 spec:
   refresh_key:
@@ -357,6 +350,51 @@ updated_at  -> last_updated_at (max)
 
 ---
 
+## Filtered Measures
+
+Use `filters:` to scope a measure to a subset of rows. Each filter is a SQL fragment evaluated per row.
+
+```yaml
+# Count of active subscriptions only
+active_count:
+  type: count
+  filters:
+    - sql: "${CUBE}.status = 'active'"
+  description: Number of subscriptions currently in active status.
+```
+
+```yaml
+# Deals at risk of churn within 30 days
+renewal_risk_30d:
+  type: count
+  filters:
+    - sql: "DATE_DIFF(${CUBE}.renewal_date, CURRENT_DATE(), DAY) <= 30"
+    - sql: "${CUBE}.status = 'active'"
+  description: Active deals with renewal date within the next 30 days.
+```
+
+```yaml
+# Revenue over the trailing 12 months
+revenue_last_12m:
+  sql: ${CUBE}.amount
+  type: sum
+  filters:
+    - sql: "${CUBE}.closed_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)"
+  description: Sum of closed deal amounts in the trailing 12 months. USD.
+```
+
+```yaml
+# ARR for active contracts only
+active_arr:
+  sql: ${CUBE}.arr
+  type: sum
+  filters:
+    - sql: "${CUBE}.contract_status = 'active'"
+  description: Annual recurring revenue across active contracts only. USD.
+```
+
+---
+
 ## Common Mistakes
 
 ### Wrapping with `cubes:` or `views:` at the root
@@ -391,3 +429,88 @@ spec:
 ```
 
 Same applies to `views:` — never use it as a root key.
+
+### Old flat format (pre-v0.5)
+
+All cubes must use the v0.5 manifest format. The old flat format with `name:` at root is rejected by `revos apply`.
+
+```yaml
+# BAD — old flat format (name: at root level)
+name: hubspot_companies
+sql_table: "`dataset.gold_hubspot_companies`"
+dimensions:
+  id:
+    sql: "${CUBE}.id"
+    type: string
+    primary_key: true
+```
+
+```yaml
+# GOOD — v0.5 manifest format
+apiVersion: revos/v1
+kind: Cube
+metadata:
+  name: hubspot_companies
+spec:
+  sql_table: "`dataset.gold_hubspot_companies`"
+  dimensions:
+    id:
+      sql: "${CUBE}.id"
+      type: string
+      primary_key: true
+      public: true
+      description: Unique HubSpot company ID. Primary key.
+```
+
+### Missing descriptions
+
+Every measure and dimension must have a `description:` field. Omitting it makes the semantic layer harder to use in the UI and in AI-generated queries.
+
+```yaml
+# BAD — no description on measure or dimension
+measures:
+  count:
+    type: count
+dimensions:
+  status:
+    sql: ${CUBE}.status
+    type: string
+```
+
+```yaml
+# GOOD — description on every field
+measures:
+  count:
+    type: count
+    description: Total number of records.
+dimensions:
+  status:
+    sql: ${CUBE}.status
+    type: string
+    description: Current lifecycle status of the record (e.g. active, churned).
+```
+
+### Missing `public: true` on primary key
+
+Primary key dimensions need both `primary_key: true` (tells Cube.dev which field is the PK) and `public: true` (makes it queryable). Without `public: true`, the PK is hidden and joins referencing it from other cubes may produce unexpected results.
+
+```yaml
+# BAD — primary_key: true but not public
+dimensions:
+  id:
+    sql: ${CUBE}.id
+    type: string
+    primary_key: true
+    description: Unique record ID.
+```
+
+```yaml
+# GOOD — both flags set
+dimensions:
+  id:
+    sql: ${CUBE}.id
+    type: string
+    primary_key: true
+    public: true
+    description: Unique record ID. Primary key.
+```

@@ -42,13 +42,13 @@ Cube names must be valid SQL/JS identifiers — snake_case (letters, digits, und
 ```text
 gold SQL file:     dbt/models/gold/gold_hubspot_companies.sql
 BigQuery table:    gold_hubspot_companies
-cube file:         cubes/hubspot_companies.yml
+cube file:         cubes/hubspot_companies.yaml
 cube name:         hubspot_companies
 join reference:    ${hubspot_companies}
 sql_table:         "`<dataset>.gold_hubspot_companies`"
 ```
 
-Same rule for bridge cubes: `gold_deals_companies` -> cube name `deals_companies`, file `cubes/deals_companies.yml`.
+Same rule for bridge cubes: `gold_deals_companies` -> cube name `deals_companies`, file `cubes/deals_companies.yaml`.
 
 ## Cube `sql_table` Reference
 
@@ -98,7 +98,12 @@ Follow these phases in order. Do not skip ahead.
 
 1. Discover gold models via `find dbt/models/gold -name "*.sql"`.
 2. If none exist, stop and tell the user to create gold models first via `create-dbt-transformations`.
-3. Inspect 1-2 existing cube files in `cubes/` to detect conventions (`extends:`, `public:`, `refresh_key` style). Apply detected conventions to new cubes. Always use flat single-cube YAML (never `cubes:` or `views:` root).
+3. Inspect 1-2 existing cube files in `cubes/` to detect conventions
+   (`refresh_key` style, presence of meta fields). All cubes use the
+   **v0.5 manifest format**: `apiVersion: revos/v1`, `kind: Cube`,
+   `metadata.name`, and all cube content nested under `spec:`. Never use
+   the old flat format (`name:` at root) or multi-cube lists
+   (`cubes:`/`views:` root).
 4. If the user named a specific model, find it. If not found, stop.
 5. Otherwise list all discovered gold models and ask which should participate (Checkpoint 1).
 6. Keep the full discovered list available for connector search in Phase 3.
@@ -241,18 +246,49 @@ Create Cube.dev YAML files in `cubes/`. Follow the existing style detected in Ph
 
 Key rules:
 
-1. **One cube per file, flat YAML.** Each cube file contains a single cube starting with `name:` at the root level. Never wrap with `cubes:` or `views:` at the root.
-2. File name = cube `name` (no `gold_` prefix) + `.yml`.
-3. `sql_table` uses fully qualified BigQuery reference with `gold_` prefix.
-4. Every confirmed relationship gets joins in both directions.
-5. Bridge/junction cubes use `public: false`.
-6. Every cube **must** include a SQL-based `refresh_key`. Use `SELECT MAX(<timestamp_col>)` with columns in this priority: `_airbyte_extracted_at` (present on all Airbyte sources), `updated_at`/`modified_at` (CDC streams), `created_at` (insert-only facts). Only use `every: <interval>` as absolute last resort when **no timestamp column exists in the table** — add a YAML comment explaining why (e.g. `# no timestamp column available`).
-7. `refresh_key.sql` references the same table as `sql_table`.
-8. Tag unvalidated joins with `# UNVALIDATED: <reason>`.
-9. For cubes derived from data ingested by a Connection (i.e. the gold model traces back to bronze tables produced by `revos apply` on a `Connection`), set `meta.abConnectionId: <connection-id>`. This groups cubes by their originating connection in the UI. Resolve the connection id with `revos connections list --json` — match by `spec.prefix` against the bronze table prefix the gold model reads from. Bridge / junction cubes built on top of connection-sourced models inherit the same `abConnectionId`. Cubes derived from purely local data (e.g. hand-written silver/gold models with no upstream connection) omit `abConnectionId`.
-10. For cubes whose rows have a natural human-readable label (companies, contacts, deals, tickets, users, projects, …), set `meta.nameDimension: <short-dimension-name>`. The value is the **short** dimension key (no `${CUBE}.` prefix and no cube-name prefix) — e.g. `properties_name`, `displayName`, `dealname`. The frontend uses this to pick the column shown as the entity's name when the cube is added as a table (see `useCubeFromMeta` in the frontend). Pick the dimension that a user would recognize as "the name of this thing"; if no such single column exists (pure join / bridge cubes, fact tables, event logs), omit `nameDimension`. The dimension must exist on this cube under `dimensions:`.
-11. Set `meta.icon` only when needed — see the decision rule in **"Choose an icon for each cube"** below.
-12. `meta` is closed: only `abConnectionId`, `nameDimension`, and `icon` are allowed. Omit the whole `meta` block if none apply.
+1. **v0.5 manifest format, one cube per file.** Each cube file uses the
+   Kubernetes-style manifest:
+   ```yaml
+   apiVersion: revos/v1
+   kind: Cube
+   metadata:
+     name: <cube_name>        # snake_case, no gold_ prefix
+   spec:
+     joins: ...
+     measures: ...
+     sql_table: "..."
+     dimensions: ...
+     description: ...
+     refresh_key: ...
+   ```
+   All cube content (`sql_table`, `joins`, `measures`, `dimensions`, `description`,
+   `refresh_key`, `public`, `meta`) lives under `spec:`. Never use the old flat
+   format (`name:` at root) or multi-cube lists (`cubes:`/`views:` root).
+2. File name = cube `metadata.name` (no `gold_` prefix) + `.yaml`.
+3. `metadata.id` — omit for new cubes; the API assigns it on first
+   `revos apply`. When updating an existing cube, preserve the existing
+   id value exactly.
+4. `sql_table` uses fully qualified BigQuery reference with `gold_` prefix.
+5. Every confirmed relationship gets joins in both directions.
+6. Bridge/junction cubes use `public: false`.
+7. Every cube **must** include a SQL-based `refresh_key`. Use `SELECT MAX(<timestamp_col>)` with columns in this priority: `_airbyte_extracted_at` (present on all Airbyte sources), `updated_at`/`modified_at` (CDC streams), `created_at` (insert-only facts). Only use `every: <interval>` as absolute last resort when **no timestamp column exists in the table** — add a YAML comment explaining why (e.g. `# no timestamp column available`).
+8. `refresh_key.sql` references the same table as `sql_table`.
+9. Tag unvalidated joins with `# UNVALIDATED: <reason>`.
+10. Every measure and every dimension must include a `description:` field.
+    Write one concise sentence explaining what the field represents, the
+    unit if numeric, and any data caveats (e.g. data staleness, frozen data).
+11. Primary key dimensions must include both `primary_key: true` and
+    `public: true`.
+12. `spec.meta` fields (`abConnectionId`, `nameDimension`, `icon`) are optional —
+    omit the entire meta block if none apply. See "Choose an icon for
+    each cube" and rules 13–14 for when to set them.
+13. For cubes derived from data ingested by a Connection, set
+    `spec.meta.abConnectionId: <connection-id>`. Resolve the id with
+    `revos connections list --json`. Cubes derived from purely local models
+    omit it.
+14. For cubes whose rows have a natural human-readable label, set
+    `spec.meta.nameDimension: <short-dimension-key>` (no `${CUBE}.` prefix).
+    Omit for bridges, fact tables, and event logs.
 
 See [references/cube-examples.md](references/cube-examples.md) for canonical standard cube, bridge cube, join direction examples, and refresh key variants.
 
@@ -313,7 +349,7 @@ custom brand icons the catalog does not cover. Malformed values cause
 
 1. If `create-dbt-transformations` was invoked (bridge model), it already validated dbt models. Otherwise run `dbt parse`.
 2. Verify physical tables exist in BigQuery: `bq show <dataset>.<table_name>`. If missing, document as pending.
-3. Verify generated cube files match conventions: flat YAML, correct naming, correct `sql_table`, all dimensions present, `refresh_key` included, joins in both directions.
+3. Verify generated cube files match conventions: v0.5 manifest format, correct naming, correct `sql_table`, all dimensions present, `refresh_key` included, joins in both directions.
 
 ---
 
@@ -332,8 +368,8 @@ Bridge/support models created (via create-dbt-transformations):
 - dbt/models/gold/<bridge_model>.sql
 
 Cube files:
-- cubes/<entity_1>.yml         (cube name: <entity_1>)
-- cubes/<bridge_entity>.yml    (cube name: <bridge_entity>, public: false)
+- cubes/<entity_1>.yaml         (cube name: <entity_1>)
+- cubes/<bridge_entity>.yaml    (cube name: <bridge_entity>, public: false)
 
 Validated relationships:
 - <entity_a>.<key> -> <entity_b>.<key> (<relationship_type>)
