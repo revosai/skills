@@ -29,19 +29,27 @@ spec:
   measures:
     count:
       type: count
-      description: Total number of HubSpot contacts.
+      description: Total number of contacts.
+    total_deal_value:
+      sql: ${CUBE}.properties_hs_total_deal_value
+      type: sum
+      description: Total HubSpot deal value.
     distinct_companies:
       sql: ${CUBE}.company_id
       type: count_distinct
       description: Number of distinct companies with at least one contact.
   sql_table: "your-project.your-dataset.gold_contacts"
   dimensions:
-    contact_id:
-      sql: ${CUBE}.contact_id
+    id:
+      sql: ${CUBE}.id
       type: string
       public: true
-      description: Unique HubSpot contact ID. Primary key.
+      description: Unique HubSpot contact identifier. Primary key.
       primary_key: true
+    properties_name:
+      sql: ${CUBE}.properties_name
+      type: string
+      description: Contact's full name as stored in HubSpot.
     email:
       sql: ${CUBE}.email
       type: string
@@ -54,6 +62,10 @@ spec:
       sql: ${CUBE}.created_at
       type: time
       description: Timestamp when the contact record was created in HubSpot.
+    airbyte_extracted_at:
+      sql: ${CUBE}._airbyte_extracted_at
+      type: time
+      description: Timestamp when this record was last extracted by Airbyte.
   description: >
     HubSpot contacts linked to customer accounts. One row per contact.
     Source: gold_contacts.
@@ -109,6 +121,10 @@ spec:
       sql: ${CUBE}.contact_id
       type: string
       description: HubSpot contact ID (foreign key to contacts).
+    airbyte_extracted_at:
+      sql: ${CUBE}._airbyte_extracted_at
+      type: time
+      description: Timestamp when this record was last extracted by Airbyte.
   description: >
     Bridge table linking deals to contacts. One row per deal-contact association.
     Internal join model — not exposed in the UI.
@@ -430,9 +446,9 @@ spec:
 
 Same applies to `views:` — never use it as a root key.
 
-### Old flat format (pre-v0.5)
+### Old flat format
 
-All cubes must use the v0.5 manifest format. The old flat format with `name:` at root is rejected by `revos apply`.
+All cubes must use the IaC manifest format. The old flat format with `name:` at root is rejected by `revos apply`.
 
 ```yaml
 # BAD — old flat format (name: at root level)
@@ -446,7 +462,7 @@ dimensions:
 ```
 
 ```yaml
-# GOOD — v0.5 manifest format
+# GOOD — IaC manifest format
 apiVersion: revos/v1
 kind: Cube
 metadata:

@@ -100,7 +100,7 @@ Follow these phases in order. Do not skip ahead.
 2. If none exist, stop and tell the user to create gold models first via `create-dbt-transformations`.
 3. Inspect 1-2 existing cube files in `cubes/` to detect conventions
    (`refresh_key` style, presence of meta fields). All cubes use the
-   **v0.5 manifest format**: `apiVersion: revos/v1`, `kind: Cube`,
+   **IaC manifest format**: `apiVersion: revos/v1`, `kind: Cube`,
    `metadata.name`, and all cube content nested under `spec:`. Never use
    the old flat format (`name:` at root) or multi-cube lists
    (`cubes:`/`views:` root).
@@ -246,7 +246,7 @@ Create Cube.dev YAML files in `cubes/`. Follow the existing style detected in Ph
 
 Key rules:
 
-1. **v0.5 manifest format, one cube per file.** Each cube file uses the
+1. **IaC manifest format, one cube per file.** Each cube file uses the
    Kubernetes-style manifest:
    ```yaml
    apiVersion: revos/v1
@@ -349,7 +349,7 @@ custom brand icons the catalog does not cover. Malformed values cause
 
 1. If `create-dbt-transformations` was invoked (bridge model), it already validated dbt models. Otherwise run `dbt parse`.
 2. Verify physical tables exist in BigQuery: `bq show <dataset>.<table_name>`. If missing, document as pending.
-3. Verify generated cube files match conventions: v0.5 manifest format, correct naming, correct `sql_table`, all dimensions present, `refresh_key` included, joins in both directions.
+3. Verify generated cube files match conventions: IaC manifest format, correct naming, correct `sql_table`, all dimensions present, `refresh_key` included, joins in both directions.
 
 ---
 
