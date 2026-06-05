@@ -223,8 +223,8 @@ spec:
 # In customers.yaml
 spec:
   joins:
-    companies_deals:
-      sql: "${CUBE}.id = ${companies_deals}.company_id"
+    customers_deals:
+      sql: "${CUBE}.id = ${customers_deals}.company_id"
       relationship: one_to_many
 ```
 
@@ -232,8 +232,8 @@ spec:
 # In deals.yaml
 spec:
   joins:
-    companies_deals:
-      sql: "${CUBE}.id = ${companies_deals}.deal_id"
+    customers_deals:
+      sql: "${CUBE}.id = ${customers_deals}.deal_id"
       relationship: one_to_many
 ```
 
