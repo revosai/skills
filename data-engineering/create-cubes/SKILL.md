@@ -219,7 +219,7 @@ Expose all business columns from each selected gold model as Cube dimensions.
 
 Key rules:
 
-1. Include PKs with `primary_key: true`. For composite PKs, use a synthetic `CONCAT` dimension — see [references/cube-examples.md](references/cube-examples.md), Composite Primary Key section.
+1. Include PKs with `primary_key: true` and `public: true`. For composite PKs, use a synthetic `CONCAT` dimension — see [references/cube-examples.md](references/cube-examples.md), Composite Primary Key section.
 2. Include secondary keys, names, statuses, timestamps, and numeric attributes as dimensions.
 3. From `_airbyte_*` columns, include only `_airbyte_extracted_at` as dimension `airbyte_extracted_at` (reference as `${CUBE}._airbyte_extracted_at`). Exclude all other `_airbyte_*` columns.
 4. Do not remove business columns just because they don't look immediately useful.

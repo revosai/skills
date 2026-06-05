@@ -38,7 +38,7 @@ spec:
       sql: ${CUBE}.company_id
       type: count_distinct
       description: Number of distinct companies with at least one contact.
-  sql_table: "your-project.your-dataset.gold_contacts"
+  sql_table: "`your-project.your-dataset.gold_contacts`"
   dimensions:
     id:
       sql: ${CUBE}.id
@@ -70,7 +70,7 @@ spec:
     HubSpot contacts linked to customer accounts. One row per contact.
     Source: gold_contacts.
   refresh_key:
-    sql: SELECT MAX(_airbyte_extracted_at) FROM your-project.your-dataset.gold_contacts
+    sql: SELECT MAX(_airbyte_extracted_at) FROM `your-project.your-dataset.gold_contacts`
 ```
 
 Notes:
@@ -104,7 +104,7 @@ spec:
     count:
       type: count
       description: Total number of deal-contact associations.
-  sql_table: "your-project.your-dataset.gold_deals_contacts"
+  sql_table: "`your-project.your-dataset.gold_deals_contacts`"
   public: false
   dimensions:
     id:
@@ -129,7 +129,7 @@ spec:
     Bridge table linking deals to contacts. One row per deal-contact association.
     Internal join model — not exposed in the UI.
   refresh_key:
-    sql: SELECT MAX(_airbyte_extracted_at) FROM your-project.your-dataset.gold_deals_contacts
+    sql: SELECT MAX(_airbyte_extracted_at) FROM `your-project.your-dataset.gold_deals_contacts`
 ```
 
 ---
@@ -145,14 +145,18 @@ spec:
       sql: "CONCAT(${CUBE}.office_unique_id, '-', ${CUBE}.month)"
       type: string
       primary_key: true
+      public: true
+      description: Synthetic primary key combining office_unique_id and month.
 
     office_unique_id:
       sql: "${CUBE}.office_unique_id"
       type: string
+      description: Unique identifier for the office.
 
     month:
       sql: "${CUBE}.month"
       type: time
+      description: Reporting month.
 ```
 
 Choose a separator that does not appear in component values. `-` is usually safe; use `||` if components may contain `-`.
@@ -171,8 +175,8 @@ Direction is always from the perspective of the current cube.
 # In deals.yaml
 spec:
   joins:
-    hubspot_companies:
-      sql: "${CUBE}.company_id = ${hubspot_companies}.id"
+    customers:
+      sql: "${CUBE}.company_id = ${customers}.id"
       relationship: many_to_one
 ```
 
@@ -180,8 +184,8 @@ spec:
 # In customers.yaml
 spec:
   joins:
-    hubspot_deals:
-      sql: "${CUBE}.id = ${hubspot_deals}.company_id"
+    deals:
+      sql: "${CUBE}.id = ${deals}.company_id"
       relationship: one_to_many
 ```
 
@@ -442,6 +446,8 @@ spec:
       sql: "${CUBE}.id"
       type: string
       primary_key: true
+      public: true
+      description: Unique HubSpot company ID. Primary key.
 ```
 
 Same applies to `views:` — never use it as a root key.
