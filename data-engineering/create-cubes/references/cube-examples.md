@@ -62,7 +62,7 @@ spec:
 
 Notes:
 
-1. `spec.name` is the cube identifier (the Cube.dev `definition.name`) referenced by `${CUBE}` and joins; it is required. `metadata.name` is the local IaC slug — the filename and address — and is never sent to the API. Keep the two equal (snake_case, no `gold_` prefix).
+1. `spec.name` is the cube identifier (the Cube.dev `definition.name`) referenced by `${CUBE}` and joins; it is required and must be snake_case (no hyphens). `metadata.name` is the local IaC slug — the filename and address — and is never sent to the API, so hyphens or underscores are both valid there. Setting it equal to the snake_case `spec.name` (no `gold_` prefix) is the convenient default so the filename mirrors the `${…}` join token.
 2. The cube identifier is `hubspot_companies` (no `gold_` prefix); `spec.sql_table` references `gold_hubspot_companies` (with `gold_` prefix), in backticks.
 3. The join references `${companies_deals}` — the cube name of a bridge cube defined in `cubes/companies_deals.yml`.
 4. Only `_airbyte_extracted_at` is exposed from Airbyte metadata, as `airbyte_extracted_at`.

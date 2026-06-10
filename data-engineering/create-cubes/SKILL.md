@@ -37,7 +37,9 @@ This skill does not build gold models. If a needed gold model is missing, hand o
 
 Strip the `gold_` prefix for cube names and file names. Keep `gold_` in `sql_table` (physical table).
 
-Cube names must be valid SQL/JS identifiers — snake_case (letters, digits, underscores), never hyphens. The cube identifier is **`spec.name`** (the Cube.dev `definition.name`): the loader sends it to the API and the Cube.dev compiler parses it as the identifier referenced by `${CUBE}` and joins. `metadata.name` is the **local IaC slug** (the `cubes/<name>.yml` filename and the address other files refer to) and is **never sent to the API**. Set both to the **same** snake_case identifier — `spec.name` is required, and hyphens in it surface as a generic 500 from the compiler with no field-level message. (Connection resources differ: there `spec.name` is a free-form UI label and `metadata.name` a hyphenated slug. For cubes, keep the two equal.)
+The cube identifier is **`spec.name`** (the Cube.dev `definition.name`) — the name the compiler parses and that `${CUBE}` and joins reference. It must be a valid SQL/JS identifier: snake_case (letters, digits, underscores), **never hyphens** — a hyphen in `spec.name` surfaces as a generic 500 from the compiler with no field-level message. `spec.name` is required.
+
+`metadata.name` is the **local IaC slug** — the `cubes/<name>.yml` filename and the address other files refer to. It is **never sent to the API**, so it is *not* bound by the SQL-identifier rule: the loader accepts `^[a-z][a-z0-9_-]*$`, i.e. hyphens (the normal RevOS slug convention) or underscores. For cubes it's convenient to set `metadata.name` equal to the snake_case `spec.name` so the filename mirrors the `${…}` join token, but a hyphenated slug is equally valid.
 
 ```text
 gold SQL file:     dbt/models/gold/gold_hubspot_companies.sql
