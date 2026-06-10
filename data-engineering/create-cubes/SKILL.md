@@ -37,13 +37,14 @@ This skill does not build gold models. If a needed gold model is missing, hand o
 
 Strip the `gold_` prefix for cube names and file names. Keep `gold_` in `sql_table` (physical table).
 
-Cube names must be valid SQL/JS identifiers — snake_case (letters, digits, underscores), never hyphens. The cube identifier is `metadata.name`: the IaC loader mirrors it into `definition.name`, and the Cube.dev compiler parses that as the identifier referenced by `${CUBE}` and joins. Hyphens in `metadata.name` surface as a generic 500 from the compiler with no field-level message. Never put `name` inside `spec` — the loader strips it. (Connection resources follow the opposite convention — `metadata.name` is hyphenated there; this rule is cube-specific.)
+Cube names must be valid SQL/JS identifiers — snake_case (letters, digits, underscores), never hyphens. The cube identifier is **`spec.name`** (the Cube.dev `definition.name`): the loader sends it to the API and the Cube.dev compiler parses it as the identifier referenced by `${CUBE}` and joins. `metadata.name` is the **local IaC slug** (the `cubes/<name>.yml` filename and the address other files refer to) and is **never sent to the API**. Set both to the **same** snake_case identifier — `spec.name` is required, and hyphens in it surface as a generic 500 from the compiler with no field-level message. (Connection resources differ: there `spec.name` is a free-form UI label and `metadata.name` a hyphenated slug. For cubes, keep the two equal.)
 
 ```text
 gold SQL file:     dbt/models/gold/gold_hubspot_companies.sql
 BigQuery table:    gold_hubspot_companies
 cube file:         cubes/hubspot_companies.yml
-cube name:         hubspot_companies
+spec.name:         hubspot_companies     (the cube identifier — required)
+metadata.name:     hubspot_companies     (local slug — same value)
 join reference:    ${hubspot_companies}
 sql_table:         "`<dataset>.gold_hubspot_companies`"
 ```
@@ -241,8 +242,8 @@ Create Cube.dev YAML files in `cubes/`. Follow the existing style detected in Ph
 
 Key rules:
 
-1. **One cube per file, flat YAML.** Each cube file contains a single cube starting with `name:` at the root level. Never wrap with `cubes:` or `views:` at the root.
-2. File name = cube `name` (no `gold_` prefix) + `.yml`.
+1. **One cube per file, IaC format.** Each cube file is a single document — `apiVersion` / `kind: Cube` / `metadata` / `spec` — with the cube definition flat under `spec` (and `spec.name` set to the identifier). Never wrap with `cubes:` or `views:` at the root.
+2. File name = cube identifier (`metadata.name` = `spec.name`, no `gold_` prefix) + `.yml`.
 3. `sql_table` uses fully qualified BigQuery reference with `gold_` prefix.
 4. Every confirmed relationship gets joins in both directions.
 5. Bridge/junction cubes use `public: false`.

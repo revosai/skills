@@ -21,6 +21,7 @@ kind: Cube
 metadata:
   name: hubspot_companies
 spec:
+  name: hubspot_companies
   sql_table: "`<dataset>.gold_hubspot_companies`"
 
   meta:
@@ -61,8 +62,8 @@ spec:
 
 Notes:
 
-1. `metadata.name` is the single source of truth for the cube identifier — it's used as the filename slug, IaC address, and Cube.dev cube name referenced by `${CUBE}` and joins.
-2. Cube name is `hubspot_companies` (no `gold_` prefix); `spec.sql_table` references `gold_hubspot_companies` (with `gold_` prefix), in backticks.
+1. `spec.name` is the cube identifier (the Cube.dev `definition.name`) referenced by `${CUBE}` and joins; it is required. `metadata.name` is the local IaC slug — the filename and address — and is never sent to the API. Keep the two equal (snake_case, no `gold_` prefix).
+2. The cube identifier is `hubspot_companies` (no `gold_` prefix); `spec.sql_table` references `gold_hubspot_companies` (with `gold_` prefix), in backticks.
 3. The join references `${companies_deals}` — the cube name of a bridge cube defined in `cubes/companies_deals.yml`.
 4. Only `_airbyte_extracted_at` is exposed from Airbyte metadata, as `airbyte_extracted_at`.
 5. `spec.refresh_key.sql` uses the same fully qualified table name as `spec.sql_table`.
@@ -79,6 +80,7 @@ kind: Cube
 metadata:
   name: companies_deals
 spec:
+  name: companies_deals
   sql_table: "`<dataset>.gold_companies_deals`"
   public: false
 
@@ -297,12 +299,14 @@ spec:
 metadata:
   name: my_cube
 spec:
+  name: my_cube
   sql_table: ...
 
 # GOOD — always include an explicit refresh_key
 metadata:
   name: my_cube
 spec:
+  name: my_cube
   sql_table: ...
   refresh_key:
     sql: "SELECT MAX(_airbyte_extracted_at) FROM `<dataset>.<gold_model>`"
@@ -376,12 +380,13 @@ cubes:
 ```
 
 ```yaml
-# GOOD — IaC format with metadata.name as the cube identifier
+# GOOD — IaC format with spec.name as the cube identifier
 apiVersion: revos/v1
 kind: Cube
 metadata:
   name: hubspot_companies
 spec:
+  name: hubspot_companies
   sql_table: "`dataset.gold_hubspot_companies`"
   dimensions:
     id:

@@ -51,6 +51,7 @@ kind: Cube
 metadata:
   name: gold_order_items_enriched
 spec:
+  name: gold_order_items_enriched
   joins:
     gold_users_with_order_stats:
       relationship: many_to_one
