@@ -37,7 +37,7 @@ find <folder> -name "*.yml" -not -name "model-graph.*" | sort
 
 For each `.yml` file extract:
 
-- `metadata.name` — cube name (the single source of truth for the cube identifier)
+- `spec.name` — the cube identifier referenced by `${CUBE}` and joins (`metadata.name` is the local slug, normally identical — fall back to it if `spec.name` is absent)
 - `spec.meta.icon` — icon key if present (catalog key, `url:…`, or `data:…`); `null` if absent
 - `spec.joins` — map of `target_cube → { relationship, sql }`
 - A short join-key label parsed from each join's `sql`

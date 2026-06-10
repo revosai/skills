@@ -19,8 +19,9 @@
 apiVersion: revos/v1
 kind: Cube
 metadata:
-  name: hubspot_companies
+  name: hubspot-companies
 spec:
+  name: hubspot_companies
   sql_table: "`<dataset>.gold_hubspot_companies`"
 
   meta:
@@ -61,9 +62,9 @@ spec:
 
 Notes:
 
-1. `metadata.name` is the single source of truth for the cube identifier — it's used as the filename slug, IaC address, and Cube.dev cube name referenced by `${CUBE}` and joins.
-2. Cube name is `hubspot_companies` (no `gold_` prefix); `spec.sql_table` references `gold_hubspot_companies` (with `gold_` prefix), in backticks.
-3. The join references `${companies_deals}` — the cube name of a bridge cube defined in `cubes/companies_deals.yml`.
+1. `spec.name` is the cube identifier (the Cube.dev `definition.name`) referenced by `${CUBE}` and joins; it is required and must be snake_case (no hyphens). `metadata.name` is the local IaC slug — the filename and address — never sent to the API; by convention it is **kebab-case** with the `gold_` prefix stripped. So this cube is `cubes/hubspot-companies.yml` with `metadata.name: hubspot-companies`, while its identifier `spec.name: hubspot_companies` is what joins reference (`${hubspot_companies}`).
+2. The cube identifier is `hubspot_companies` (snake_case, no `gold_` prefix); `spec.sql_table` references `gold_hubspot_companies` (with `gold_` prefix), in backticks.
+3. The join references `${companies_deals}` — the snake_case identifier of a bridge cube defined in `cubes/companies-deals.yml`.
 4. Only `_airbyte_extracted_at` is exposed from Airbyte metadata, as `airbyte_extracted_at`.
 5. `spec.refresh_key.sql` uses the same fully qualified table name as `spec.sql_table`.
 6. `spec.meta.abConnectionId` ties this cube back to the Connection that ingests its raw data — get the id from `revos connections list --json`. Omit it for cubes built on purely local models with no upstream connection.
@@ -77,8 +78,9 @@ Notes:
 apiVersion: revos/v1
 kind: Cube
 metadata:
-  name: companies_deals
+  name: companies-deals
 spec:
+  name: companies_deals
   sql_table: "`<dataset>.gold_companies_deals`"
   public: false
 
@@ -164,7 +166,7 @@ Direction is always from the perspective of the current cube.
 ### Direct many-to-one / one-to-many
 
 ```yaml
-# In cubes/hubspot_deals.yml
+# In cubes/hubspot-deals.yml
 spec:
   joins:
     hubspot_companies:
@@ -173,7 +175,7 @@ spec:
 ```
 
 ```yaml
-# In cubes/hubspot_companies.yml
+# In cubes/hubspot-companies.yml
 spec:
   joins:
     hubspot_deals:
@@ -216,7 +218,7 @@ spec:
 ### Bridge joins (both parents reference bridge)
 
 ```yaml
-# In cubes/hubspot_companies.yml
+# In cubes/hubspot-companies.yml
 spec:
   joins:
     companies_deals:
@@ -225,7 +227,7 @@ spec:
 ```
 
 ```yaml
-# In cubes/hubspot_deals.yml
+# In cubes/hubspot-deals.yml
 spec:
   joins:
     companies_deals:
@@ -295,14 +297,16 @@ spec:
 ```yaml
 # BAD — omitting refresh_key entirely (cube uses default, which may be too aggressive)
 metadata:
-  name: my_cube
+  name: my-cube
 spec:
+  name: my_cube
   sql_table: ...
 
 # GOOD — always include an explicit refresh_key
 metadata:
-  name: my_cube
+  name: my-cube
 spec:
+  name: my_cube
   sql_table: ...
   refresh_key:
     sql: "SELECT MAX(_airbyte_extracted_at) FROM `<dataset>.<gold_model>`"
@@ -376,12 +380,13 @@ cubes:
 ```
 
 ```yaml
-# GOOD — IaC format with metadata.name as the cube identifier
+# GOOD — IaC format with spec.name as the cube identifier
 apiVersion: revos/v1
 kind: Cube
 metadata:
-  name: hubspot_companies
+  name: hubspot-companies
 spec:
+  name: hubspot_companies
   sql_table: "`dataset.gold_hubspot_companies`"
   dimensions:
     id:
