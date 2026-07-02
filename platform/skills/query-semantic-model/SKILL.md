@@ -40,11 +40,13 @@ So when more than one path connects two cubes, you can't inspect the join
 graph to see which one is right; Cube.js will otherwise pick one on its own,
 and the answer can silently change depending on which one it picks.
 
-You can still pin the path explicitly with `joinHints`: an ordered list of
-`[cubeA, cubeB]` pairs naming the cubes to join through, e.g.
-`[["gold_order_items_enriched", "gold_users_with_order_stats"]]`. But you're
-choosing that path blind — you have a tool to express a path, not a way to
-discover which path is correct.
+You can still pin the path explicitly with `joinHints`: a list of join paths,
+where each path is an ordered array of cube names to route through — two cubes
+for a direct join, more for a multi-hop path, e.g.
+`[["gold_order_items_enriched", "gold_users_with_order_stats"]]` or
+`[["orders", "line_items", "products"]]`. But you're choosing that path blind
+— you have a tool to express a path, not a way to discover which path is
+correct.
 
 So: only set `joinHints` when the path is genuinely obvious from the cube and
 field names/descriptions. When a question spans more than one cube and you
@@ -72,7 +74,7 @@ each field exactly right avoids most tool errors:
 | `timeDimensions` | `[{ dimension, granularity?, dateRange? }]` | see below |
 | `filters` | see below | leaf conditions, optionally nested in `and`/`or` groups |
 | `order` | `[[member, dir], …]` or `{ member: dir }` | either shape works — array of `[member, "asc"\|"desc"\|"none"]` pairs, or an object map |
-| `joinHints` | `[[cubeA, cubeB], …]` | pins an ambiguous join path — see Step 2 |
+| `joinHints` | `[[cube, …], …]` | pins an ambiguous join path — each entry is an ordered path of cube names (two or more), see Step 2 |
 | `limit` | `number`, max 1000 | default 100 if omitted |
 | `offset` | `number` | for paging past `limit` |
 | `timezone` | IANA string, e.g. `Europe/Amsterdam` | defaults to UTC |
