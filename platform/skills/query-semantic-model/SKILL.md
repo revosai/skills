@@ -87,6 +87,10 @@ a series.
 12 months"`, `"this month"`) or an explicit `["2026-01-01", "2026-03-31"]`
 pair of ISO dates.
 
+**`timeDimensions[].compareDateRange`** — for period-over-period questions
+("this month vs. last month"), an array of two or more ranges (each a relative
+string or `[from, to]` pair) to compare the same measure across.
+
 **`filters`** is a list of conditions, each one of:
 - Binary: `{ "member": "...", "operator": "...", "values": ["..."] }` —
   `values` is **always an array of strings**, even for numbers or dates
