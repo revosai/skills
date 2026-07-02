@@ -36,27 +36,19 @@ what `cube_describe` returns, say so — don't invent a field.
 
 `cube_describe` returns only a single cube's own fields — it does **not**
 expose how cubes join to each other, or which paths exist between two cubes.
+Cube's own query engine has a way to pin an ambiguous path (`joinHints`), but
+`cube_query` doesn't accept it — only the fields listed in Step 3 go through.
+So when more than one path connects two cubes, Cube.js picks one on its own,
+and the answer can silently change depending on which one it picks.
 
-You can still reach a field that lives on a different cube by prefixing the
-member with the cubes to route through, dot-separated — e.g.
-`gold_order_items_enriched.gold_users_with_order_stats.country` reaches
-`country` by joining `gold_order_items_enriched` → `gold_users_with_order_stats`.
-The last segment is the real member; everything before it is the path. This
-works because `cube_query` forwards straight to the org's Cube.js semantic
-layer, which resolves it — but you're choosing that path blind, since you
-can't see the join graph to confirm it's the only one, or the right one.
-
-So: only reach for a join hint when the path is genuinely obvious from the
-cube and field names/descriptions. When a question spans two cubes and you
-can't point to an obviously singular relationship between them — two
-plausible routes to the same field, or a fact table that could relate to a
-dimension both directly and through a third cube — **don't guess**. State the
-ambiguity plainly and ask the user to confirm the intended relationship or
-grain (e.g. "revenue per order item" vs. "revenue per user") before running
-the query. Whenever you do use a join hint, say so in your explanation
-afterward — which path you took and why — so the user can catch a wrong
-assumption. Prefer the simplest single-cube answer whenever the question
-doesn't actually require crossing cubes at all.
+When a question spans more than one cube and the relationship between them
+isn't obviously singular from their names and descriptions — two plausible
+routes to the same field, or a fact table that could relate to a dimension
+both directly and through a third cube — **don't guess**. State the ambiguity
+plainly and ask the user to confirm the intended relationship or grain — e.g.
+"revenue per order item" vs. "revenue per user" — before running the query.
+Prefer the simplest single-cube answer whenever the question doesn't actually
+require crossing cubes at all.
 
 ## Step 3: Build the query
 
@@ -71,7 +63,7 @@ each field exactly right avoids most tool errors:
 | `segments` | `string[]` | named filters from `cube_describe`, layered on top like an extra filter |
 | `timeDimensions` | `[{ dimension, granularity?, dateRange? }]` | see below |
 | `filters` | `[{ member, operator, values }]` or `[{ member, operator }]` | two distinct shapes, see below |
-| `order` | `[[member, "asc" \| "desc"], …]` | **an array of tuples, not an object** — `[["gold_order_items_enriched.count", "desc"]]`, not `{"gold_order_items_enriched.count": "desc"}` |
+| `order` | `[[member, "asc" \| "desc"], …]` | **only the array-of-tuples form** — Cube's own API also accepts an object map elsewhere, but this tool doesn't; use `[["gold_order_items_enriched.count", "desc"]]`, not `{"gold_order_items_enriched.count": "desc"}` |
 | `limit` | `number`, max 1000 | default 100 if omitted |
 | `offset` | `number` | for paging past `limit` |
 | `timezone` | IANA string, e.g. `Europe/Amsterdam` | defaults to UTC |
@@ -94,9 +86,12 @@ get a syntax error:
   `beforeOrOnDate`, `afterDate`, `afterOrOnDate`.
 - Unary: `{ "member": "...", "operator": "set" | "notSet" }` — no `values`
   field at all for these two.
-- Every filter in the array is **AND**-combined; there's no OR or nested-group
-  syntax. If a question genuinely needs OR logic across filters, say that's
-  not expressible here rather than forcing an AND that changes the meaning.
+- Every filter in the array is **AND**-combined. Cube's own query language
+  supports nested `{"or": [...]}` / `{"and": [...]}` filter groups, but this
+  tool's schema only accepts the flat list above — those nested shapes aren't
+  available here. If a question genuinely needs OR logic across filters, say
+  that's not expressible here rather than forcing an AND that changes the
+  meaning.
 
 Examples:
 
