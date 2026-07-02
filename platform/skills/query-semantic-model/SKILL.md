@@ -35,22 +35,70 @@ what `cube_describe` returns, say so — don't invent a field.
 ## Step 2: Known limitation — join relationships are not exposed
 
 `cube_describe` returns only a single cube's own fields — it does **not**
-expose how cubes join to each other. When more than one path connects two
-cubes, the answer can change depending on which one is used.
+expose how cubes join to each other, or which paths exist between two cubes.
 
-When a question spans more than one cube and the relationship between them
-isn't obviously singular from their names and descriptions (for example, a
-fact table that could relate to a dimension both directly and indirectly
-through a third cube), **don't guess**. State the ambiguity plainly and ask
-the user to confirm the intended relationship or grain — e.g. "revenue per
-order item" vs. "revenue per user" — before running the query. Prefer the
-simplest single-cube answer whenever the question doesn't actually require
-crossing cubes.
+You can still reach a field that lives on a different cube by prefixing the
+member with the cubes to route through, dot-separated — e.g.
+`gold_order_items_enriched.gold_users_with_order_stats.country` reaches
+`country` by joining `gold_order_items_enriched` → `gold_users_with_order_stats`.
+The last segment is the real member; everything before it is the path. This
+works because `cube_query` forwards straight to the org's Cube.js semantic
+layer, which resolves it — but you're choosing that path blind, since you
+can't see the join graph to confirm it's the only one, or the right one.
+
+So: only reach for a join hint when the path is genuinely obvious from the
+cube and field names/descriptions. When a question spans two cubes and you
+can't point to an obviously singular relationship between them — two
+plausible routes to the same field, or a fact table that could relate to a
+dimension both directly and through a third cube — **don't guess**. State the
+ambiguity plainly and ask the user to confirm the intended relationship or
+grain (e.g. "revenue per order item" vs. "revenue per user") before running
+the query. Whenever you do use a join hint, say so in your explanation
+afterward — which path you took and why — so the user can catch a wrong
+assumption. Prefer the simplest single-cube answer whenever the question
+doesn't actually require crossing cubes at all.
 
 ## Step 3: Build the query
 
 `cube_query` takes the pieces of a Cube.js query directly as tool arguments —
-no shell quoting, no temp files, just pass the object:
+no query string, no shell quoting, just pass the object. Getting the shape of
+each field exactly right avoids most tool errors:
+
+| Field | Shape | Notes |
+|---|---|---|
+| `measures` | `string[]` | quantities to aggregate, e.g. `gold_order_items_enriched.count` |
+| `dimensions` | `string[]` | attributes to group/break down by |
+| `segments` | `string[]` | named filters from `cube_describe`, layered on top like an extra filter |
+| `timeDimensions` | `[{ dimension, granularity?, dateRange? }]` | see below |
+| `filters` | `[{ member, operator, values }]` or `[{ member, operator }]` | two distinct shapes, see below |
+| `order` | `[[member, "asc" \| "desc"], …]` | **an array of tuples, not an object** — `[["gold_order_items_enriched.count", "desc"]]`, not `{"gold_order_items_enriched.count": "desc"}` |
+| `limit` | `number`, max 1000 | default 100 if omitted |
+| `offset` | `number` | for paging past `limit` |
+| `timezone` | IANA string, e.g. `Europe/Amsterdam` | defaults to UTC |
+
+**`timeDimensions[].granularity`** — one of `day`, `week`, `month`, `quarter`,
+`year`. Omit it entirely for a single total across the whole range instead of
+a series.
+
+**`timeDimensions[].dateRange`** — a relative string (`"last quarter"`, `"last
+12 months"`, `"this month"`) or an explicit `["2026-01-01", "2026-03-31"]`
+pair of ISO dates.
+
+**`filters`** has two shapes, and mixing up their fields is the easiest way to
+get a syntax error:
+- Binary: `{ "member": "...", "operator": "...", "values": ["..."] }` —
+  `values` is **always an array of strings**, even for numbers or dates
+  (`["100"]`, not `[100]`). Valid operators: `equals`, `notEquals`, `contains`,
+  `notContains`, `startsWith`, `notStartsWith`, `endsWith`, `notEndsWith`,
+  `gt`, `gte`, `lt`, `lte`, `inDateRange`, `notInDateRange`, `beforeDate`,
+  `beforeOrOnDate`, `afterDate`, `afterOrOnDate`.
+- Unary: `{ "member": "...", "operator": "set" | "notSet" }` — no `values`
+  field at all for these two.
+- Every filter in the array is **AND**-combined; there's no OR or nested-group
+  syntax. If a question genuinely needs OR logic across filters, say that's
+  not expressible here rather than forcing an AND that changes the meaning.
+
+Examples:
 
 ```json
 { "measures": ["gold_order_items_enriched.count"] }
@@ -80,17 +128,26 @@ Time series (the chart-friendliest shape):
 }
 ```
 
+Filtered:
+
+```json
+{
+  "measures": ["gold_order_items_enriched.revenue"],
+  "dimensions": ["gold_order_items_enriched.traffic_source"],
+  "filters": [
+    { "member": "gold_order_items_enriched.is_refunded", "operator": "equals", "values": ["false"] }
+  ]
+}
+```
+
 Rules of thumb:
 
-- One measure + one dimension → bar chart by category.
-- One measure + one `timeDimensions` with `granularity` → bar chart over time.
-- Multiple measures or multiple dimensions → render as a table only; don't try
-  to draw a chart.
+- One measure + one dimension → chart candidate by category.
+- One measure + one `timeDimensions` with `granularity` → chart candidate over time.
+- Multiple measures or multiple dimensions → table only; don't try to chart it.
 - Always set `limit` explicitly for "top N" questions (`limit: N` + matching
   `order`). Default is 100 rows, hard max 1000 — don't rely on the default for
   an open-ended pull.
-- `timeDimensions[].dateRange` accepts relative strings ("last quarter", "last
-  7 days", "this month") or an explicit `[from, to]` pair of ISO dates.
 
 ## Step 4: Run the query
 
