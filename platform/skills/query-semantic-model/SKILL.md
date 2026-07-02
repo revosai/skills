@@ -73,7 +73,7 @@ each field exactly right avoids most tool errors:
 | `segments` | `string[]` | named filters from `cube_describe`, layered on top like an extra filter |
 | `timeDimensions` | `[{ dimension, granularity?, dateRange? }]` | see below |
 | `filters` | see below | leaf conditions, optionally nested in `and`/`or` groups |
-| `order` | `[[member, dir], …]` or `{ member: dir }` | either shape works — array of `[member, "asc"\|"desc"\|"none"]` pairs, or an object map |
+| `order` | `[[member, dir], …]` or `{ member: dir }` | either shape works — array of `[member, "asc"\|"desc"]` pairs, or an object map |
 | `joinHints` | `[[cube, …], …]` | pins an ambiguous join path — each entry is an ordered path of cube names (two or more), see Step 2 |
 | `limit` | `number`, max 1000 | default 100 if omitted |
 | `offset` | `number` | for paging past `limit` |
@@ -96,11 +96,12 @@ string or `[from, to]` pair) to compare the same measure across.
 **`filters`** is a list of conditions, each one of:
 - A condition: `{ "member": "...", "operator": "...", "values": [...] }`.
   Values are usually strings (`["100"]` works fine even for numbers/dates),
-  but numbers and booleans are accepted too. Operators: `equals`, `notEquals`,
-  `in`, `notIn`, `contains`, `notContains`, `startsWith`, `notStartsWith`,
-  `endsWith`, `notEndsWith`, `gt`, `gte`, `lt`, `lte`, `inDateRange`,
-  `notInDateRange`, `onTheDate`, `beforeDate`, `beforeOrOnDate`, `afterDate`,
-  `afterOrOnDate`. `set` / `notSet` check presence and take **no** `values`.
+  but numbers, booleans, and `null` are accepted too. Operators: `equals`,
+  `notEquals`, `in`, `notIn`, `contains`, `notContains`, `startsWith`,
+  `notStartsWith`, `endsWith`, `notEndsWith`, `gt`, `gte`, `lt`, `lte`,
+  `inDateRange`, `notInDateRange`, `onTheDate`, `beforeDate`, `beforeOrOnDate`,
+  `afterDate`, `afterOrOnDate`, `measureFilter`. `set` / `notSet` check
+  presence and take **no** `values`.
 - A group: `{ "and": [...] }` or `{ "or": [...] }`, where each entry is again
   a condition or a group (they can nest). Top-level entries in the `filters`
   array are implicitly AND-combined; reach for an explicit `or` group the
