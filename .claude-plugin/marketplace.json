@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "RevOS data-engineering Agent Skills: build and explore the lakehouse, author dbt transformations, define Cube.dev semantic models, and query them — all from your coding agent.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {
@@ -23,6 +23,11 @@
         "./data-engineering/query-semantic-model",
         "./data-engineering/visualize-semantic-model"
       ]
+    },
+    {
+      "name": "platform",
+      "description": "Do in chat what you'd otherwise do in the RevOS app — starting with querying your live semantic model in plain English, no BI tool or CLI required. Connects your AI assistant to your org's RevOS data over MCP.",
+      "source": "./platform"
     }
   ]
 }
