@@ -32,23 +32,31 @@ the exact `measures`, `dimensions` (with time granularities where relevant), and
 Never hardcode or guess a member name. If the question can't be answered from
 what `cube_describe` returns, say so — don't invent a field.
 
-## Step 2: Known limitation — join relationships are not exposed
+## Step 2: Known limitation — join relationships aren't exposed by cube_describe
 
 `cube_describe` returns only a single cube's own fields — it does **not**
 expose how cubes join to each other, or which paths exist between two cubes.
-Cube's own query engine has a way to pin an ambiguous path (`joinHints`), but
-`cube_query` doesn't accept it — only the fields listed in Step 3 go through.
-So when more than one path connects two cubes, Cube.js picks one on its own,
+So when more than one path connects two cubes, you can't inspect the join
+graph to see which one is right; Cube.js will otherwise pick one on its own,
 and the answer can silently change depending on which one it picks.
 
-When a question spans more than one cube and the relationship between them
-isn't obviously singular from their names and descriptions — two plausible
-routes to the same field, or a fact table that could relate to a dimension
-both directly and through a third cube — **don't guess**. State the ambiguity
-plainly and ask the user to confirm the intended relationship or grain — e.g.
-"revenue per order item" vs. "revenue per user" — before running the query.
-Prefer the simplest single-cube answer whenever the question doesn't actually
-require crossing cubes at all.
+You can still pin the path explicitly with `joinHints`: an ordered list of
+`[cubeA, cubeB]` pairs naming the cubes to join through, e.g.
+`[["gold_order_items_enriched", "gold_users_with_order_stats"]]`. But you're
+choosing that path blind — you have a tool to express a path, not a way to
+discover which path is correct.
+
+So: only set `joinHints` when the path is genuinely obvious from the cube and
+field names/descriptions. When a question spans more than one cube and you
+can't point to an obviously singular relationship between them — two
+plausible routes to the same field, or a fact table that could relate to a
+dimension both directly and through a third cube — **don't guess**. State the
+ambiguity plainly and ask the user to confirm the intended relationship or
+grain — e.g. "revenue per order item" vs. "revenue per user" — before running
+the query. Whenever you do set `joinHints`, say so in your explanation
+afterward — which path you used and why — so the user can catch a wrong
+assumption. Prefer the simplest single-cube answer whenever the question
+doesn't actually require crossing cubes at all.
 
 ## Step 3: Build the query
 
@@ -62,11 +70,14 @@ each field exactly right avoids most tool errors:
 | `dimensions` | `string[]` | attributes to group/break down by |
 | `segments` | `string[]` | named filters from `cube_describe`, layered on top like an extra filter |
 | `timeDimensions` | `[{ dimension, granularity?, dateRange? }]` | see below |
-| `filters` | `[{ member, operator, values }]` or `[{ member, operator }]` | two distinct shapes, see below |
-| `order` | `[[member, "asc" \| "desc"], …]` | **only the array-of-tuples form** — Cube's own API also accepts an object map elsewhere, but this tool doesn't; use `[["gold_order_items_enriched.count", "desc"]]`, not `{"gold_order_items_enriched.count": "desc"}` |
+| `filters` | see below | leaf conditions, optionally nested in `and`/`or` groups |
+| `order` | `[[member, dir], …]` or `{ member: dir }` | either shape works — array of `[member, "asc"\|"desc"\|"none"]` pairs, or an object map |
+| `joinHints` | `[[cubeA, cubeB], …]` | pins an ambiguous join path — see Step 2 |
 | `limit` | `number`, max 1000 | default 100 if omitted |
 | `offset` | `number` | for paging past `limit` |
 | `timezone` | IANA string, e.g. `Europe/Amsterdam` | defaults to UTC |
+| `total` | `boolean` | also returns the total matching row count, ignoring `limit`/`offset` — useful for "(showing 10 of 842)" |
+| `ungrouped` | `boolean` | returns raw rows without aggregating by the dimensions, for inspecting individual records rather than summarizing — the row limit still applies |
 
 **`timeDimensions[].granularity`** — one of `day`, `week`, `month`, `quarter`,
 `year`. Omit it entirely for a single total across the whole range instead of
@@ -76,8 +87,7 @@ a series.
 12 months"`, `"this month"`) or an explicit `["2026-01-01", "2026-03-31"]`
 pair of ISO dates.
 
-**`filters`** has two shapes, and mixing up their fields is the easiest way to
-get a syntax error:
+**`filters`** is a list of conditions, each one of:
 - Binary: `{ "member": "...", "operator": "...", "values": ["..."] }` —
   `values` is **always an array of strings**, even for numbers or dates
   (`["100"]`, not `[100]`). Valid operators: `equals`, `notEquals`, `contains`,
@@ -86,12 +96,12 @@ get a syntax error:
   `beforeOrOnDate`, `afterDate`, `afterOrOnDate`.
 - Unary: `{ "member": "...", "operator": "set" | "notSet" }` — no `values`
   field at all for these two.
-- Every filter in the array is **AND**-combined. Cube's own query language
-  supports nested `{"or": [...]}` / `{"and": [...]}` filter groups, but this
-  tool's schema only accepts the flat list above — those nested shapes aren't
-  available here. If a question genuinely needs OR logic across filters, say
-  that's not expressible here rather than forcing an AND that changes the
-  meaning.
+- A group: `{ "and": [...] }` or `{ "or": [...] }`, where each entry is again
+  one of these same shapes (they can nest). Top-level entries in the
+  `filters` array are implicitly AND-combined; reach for an explicit `or`
+  group the moment a question needs "either of these" rather than "all of
+  these" — mixing dimension and measure conditions inside the same `and`/`or`
+  group isn't supported, keep those separate.
 
 Examples:
 
@@ -132,6 +142,32 @@ Filtered:
   "filters": [
     { "member": "gold_order_items_enriched.is_refunded", "operator": "equals", "values": ["false"] }
   ]
+}
+```
+
+Filtered with OR logic ("either refunded or a test order"):
+
+```json
+{
+  "measures": ["gold_order_items_enriched.count"],
+  "filters": [
+    {
+      "or": [
+        { "member": "gold_order_items_enriched.is_refunded", "operator": "equals", "values": ["true"] },
+        { "member": "gold_order_items_enriched.is_test_order", "operator": "equals", "values": ["true"] }
+      ]
+    }
+  ]
+}
+```
+
+Crossing cubes with a pinned join path (see Step 2):
+
+```json
+{
+  "measures": ["gold_order_items_enriched.revenue"],
+  "dimensions": ["gold_users_with_order_stats.country"],
+  "joinHints": [["gold_order_items_enriched", "gold_users_with_order_stats"]]
 }
 ```
 
