@@ -13,10 +13,10 @@ description: >
 # Query Semantic Model
 
 Answer business questions by querying the org's live semantic model over the
-`platform` MCP server and rendering the result directly in the chat — no BI tool,
-no CLI, no local project. Three tools do everything you need: `cube_list`
-discovers the available datasets, `cube_describe` lists a dataset's fields, and
-`cube_query` runs the query and returns rows.
+`platform` MCP server and rendering the result directly in the chat. Three
+tools do everything you need: `cube_list` discovers the available datasets,
+`cube_describe` lists a dataset's fields, and `cube_query` runs the query and
+returns rows.
 
 ## Step 1: Discover what's queryable
 
@@ -34,22 +34,18 @@ what `cube_describe` returns, say so — don't invent a field.
 
 ## Step 2: Known limitation — join relationships are not exposed
 
-`cube_describe` returns only a single cube's own fields. It does **not** expose
-how cubes join to each other. This matters because Cube.js infers the join path
-from the cubes that appear in a query, and when more than one path connects two
-cubes, the answer changes depending on which one it picks — the single biggest
-source of "the number looks wrong" bugs in a semantic-model query.
+`cube_describe` returns only a single cube's own fields — it does **not**
+expose how cubes join to each other. When more than one path connects two
+cubes, the answer can change depending on which one is used.
 
-There is no local `cubes/*.yml` here to read a join graph from, and no way to
-pin a join path with a dotted-prefix hint the way a developer working from the
-RevOS CLI would. So when a question spans more than one cube and the
-relationship between them isn't obviously singular from their names and
-descriptions (for example, a fact table that could relate to a dimension both
-directly and indirectly through a third cube), **don't guess**. State the
-ambiguity plainly and ask the user to confirm the intended relationship or grain
-— e.g. "revenue per order item" vs. "revenue per user" — before running the
-query. Prefer the simplest single-cube answer whenever the question doesn't
-actually require crossing cubes.
+When a question spans more than one cube and the relationship between them
+isn't obviously singular from their names and descriptions (for example, a
+fact table that could relate to a dimension both directly and indirectly
+through a third cube), **don't guess**. State the ambiguity plainly and ask
+the user to confirm the intended relationship or grain — e.g. "revenue per
+order item" vs. "revenue per user" — before running the query. Prefer the
+simplest single-cube answer whenever the question doesn't actually require
+crossing cubes.
 
 ## Step 3: Build the query
 
@@ -116,33 +112,47 @@ monospaced:
 
 ### 5a. ASCII table — always
 
-Show every returned row. Right-align numeric columns, left-align everything
-else. Format numbers with thousands separators; round to 2 decimals when not
-integral. Truncate long string values to 32 chars with a trailing `…`.
+Show every returned row. Left-align the label column, sized to its widest
+value. Right-align every numeric column, sized to its widest formatted value,
+so the digits actually line up on the right edge — pad each row with spaces to
+hit that fixed width; don't eyeball it. Format numbers with thousands
+separators; round to 2 decimals when not integral. Truncate long string values
+to 32 chars with a trailing `…`.
 
 ```
-traffic_source       count
-─────────────────  ───────
-Search             142,318
-Organic             88,204
-Email                41,907
-Facebook             22,015
-Display               9,471
+traffic_source    count
+──────────────  ───────
+Search          142,318
+Organic          88,204
+Email            41,907
+Facebook         22,015
+Display           9,471
 ```
 
 ### 5b. ASCII bar chart — when the shape allows
 
 If the query returned exactly one measure plus exactly one dimension
-(categorical or time), draw a horizontal bar chart underneath the table. Scale
-bars to a width of **40 characters** based on the largest value in the result
-set; use the `█` block character for filled cells.
+(categorical or time), draw a horizontal bar chart underneath the table.
+
+For each row, compute `barLength = value / largestValue * 40` (40 characters
+is full width). Render `floor(barLength)` solid `█` blocks, then — unless the
+remainder is 0 — one extra partial block for the fractional eighth, using the
+Unicode eighth-block characters: `▏` (1/8) `▎` (2/8) `▍` (3/8) `▌` (4/8) `▋`
+(5/8) `▊` (6/8) `▉` (7/8). Round the remainder to the nearest eighth to pick
+the character (round up to a full extra `█` instead of a partial block if it
+rounds to 8/8). This gives every bar a smooth right edge instead of a hard cut.
+
+Pad every bar with trailing spaces out to the same 40-character width, then two
+spaces, then the value right-aligned to the widest formatted value in the
+set — same fixed-width rule as the table, so the numbers form a straight
+column regardless of how long each bar is:
 
 ```
-Search        ████████████████████████████████████████  142,318
-Organic       ████████████████████████▊                   88,204
-Email         ███████████▊                                 41,907
-Facebook      ██████▏                                      22,015
-Display       ██▋                                           9,471
+Search    ████████████████████████████████████████  142,318
+Organic   ████████████████████████▊                  88,204
+Email     ███████████▊                               41,907
+Facebook  ██████▎                                    22,015
+Display   ██▋                                         9,471
 ```
 
 Skip the chart (table only) when: the result set is empty, the query has 2+
@@ -169,8 +179,6 @@ follow-up query the user could ask next.
 - Always set `limit` deliberately for "top N" questions; be aware of the
   default (100) and hard max (1000).
 - This is a read-only, in-chat skill — no file writes, no local project, no
-  YAML, no CLI commands. Don't reference `revos apply`, `revos cubes meta`,
-  `cubes/*.yml`, or any local project state; none of that exists in this
-  context.
+  YAML.
 - If `cube_list` returns no cubes, tell the user their organization doesn't
   appear to have a semantic model set up yet — don't guess why.
