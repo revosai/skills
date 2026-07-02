@@ -107,58 +107,40 @@ against a dimension that isn't a time dimension.
 
 ## Step 5: Render the result in chat
 
-Print **two** blocks in the reply, both as fenced code so they render
-monospaced:
+### 5a. Table — always
 
-### 5a. ASCII table — always
+Render every returned row as a standard Markdown table, not ASCII art — it
+renders natively in the chat UI and needs no manual column-width math.
+Right-align numeric columns with the `---:` header-separator syntax. Format
+numbers with thousands separators; round to 2 decimals when not integral.
 
-Show every returned row. Left-align the label column, sized to its widest
-value. Right-align every numeric column, sized to its widest formatted value,
-so the digits actually line up on the right edge — pad each row with spaces to
-hit that fixed width; don't eyeball it. Format numbers with thousands
-separators; round to 2 decimals when not integral. Truncate long string values
-to 32 chars with a trailing `…`.
-
-```
-traffic_source    count
-──────────────  ───────
-Search          142,318
-Organic          88,204
-Email            41,907
-Facebook         22,015
-Display           9,471
+```markdown
+| traffic_source | count |
+|---|---:|
+| Search | 142,318 |
+| Organic | 88,204 |
+| Email | 41,907 |
+| Facebook | 22,015 |
+| Display | 9,471 |
 ```
 
-### 5b. ASCII bar chart — when the shape allows
+### 5b. Chart — when the shape allows
 
 If the query returned exactly one measure plus exactly one dimension
-(categorical or time), draw a horizontal bar chart underneath the table.
+(categorical or time), also create an **artifact** with a real chart (bar
+chart for a category breakdown, line or bar chart for a time series) so it
+renders inline as an actual chart, not text art. A small self-contained SVG is
+usually the simplest and most portable choice — no external libraries or
+network access needed — but use whatever chart artifact fits the client best.
+Label the axes/categories and show the values; keep the color scheme simple.
 
-For each row, compute `barLength = value / largestValue * 40` (40 characters
-is full width). Render `floor(barLength)` solid `█` blocks, then — unless the
-remainder is 0 — one extra partial block for the fractional eighth, using the
-Unicode eighth-block characters: `▏` (1/8) `▎` (2/8) `▍` (3/8) `▌` (4/8) `▋`
-(5/8) `▊` (6/8) `▉` (7/8). Round the remainder to the nearest eighth to pick
-the character (round up to a full extra `█` instead of a partial block if it
-rounds to 8/8). This gives every bar a smooth right edge instead of a hard cut.
+If the current client doesn't support artifacts, skip the chart and rely on
+the table alone — don't fall back to drawing a chart out of text characters.
 
-Pad every bar with trailing spaces out to the same 40-character width, then two
-spaces, then the value right-aligned to the widest formatted value in the
-set — same fixed-width rule as the table, so the numbers form a straight
-column regardless of how long each bar is:
-
-```
-Search    ████████████████████████████████████████  142,318
-Organic   ████████████████████████▊                  88,204
-Email     ███████████▊                               41,907
-Facebook  ██████▎                                    22,015
-Display   ██▋                                         9,471
-```
-
-Skip the chart (table only) when: the result set is empty, the query has 2+
-measures, 2+ dimensions, or a single scalar value (no dimension), or all
-measure values are zero or null. For a single scalar answer, state the number
-in prose followed by the one-line table — no chart.
+Skip the chart entirely when: the result set is empty, the query has 2+
+measures, 2+ dimensions, a single scalar value (no dimension), or all measure
+values are zero or null. For a single scalar answer, state the number in prose
+followed by the one-row table — no chart.
 
 ## Step 6: Explain the result briefly
 
