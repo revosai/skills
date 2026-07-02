@@ -94,20 +94,19 @@ pair of ISO dates.
 string or `[from, to]` pair) to compare the same measure across.
 
 **`filters`** is a list of conditions, each one of:
-- Binary: `{ "member": "...", "operator": "...", "values": ["..."] }` —
-  `values` is **always an array of strings**, even for numbers or dates
-  (`["100"]`, not `[100]`). Valid operators: `equals`, `notEquals`, `contains`,
-  `notContains`, `startsWith`, `notStartsWith`, `endsWith`, `notEndsWith`,
-  `gt`, `gte`, `lt`, `lte`, `inDateRange`, `notInDateRange`, `beforeDate`,
-  `beforeOrOnDate`, `afterDate`, `afterOrOnDate`.
-- Unary: `{ "member": "...", "operator": "set" | "notSet" }` — no `values`
-  field at all for these two.
+- A condition: `{ "member": "...", "operator": "...", "values": [...] }`.
+  Values are usually strings (`["100"]` works fine even for numbers/dates),
+  but numbers and booleans are accepted too. Operators: `equals`, `notEquals`,
+  `in`, `notIn`, `contains`, `notContains`, `startsWith`, `notStartsWith`,
+  `endsWith`, `notEndsWith`, `gt`, `gte`, `lt`, `lte`, `inDateRange`,
+  `notInDateRange`, `onTheDate`, `beforeDate`, `beforeOrOnDate`, `afterDate`,
+  `afterOrOnDate`. `set` / `notSet` check presence and take **no** `values`.
 - A group: `{ "and": [...] }` or `{ "or": [...] }`, where each entry is again
-  one of these same shapes (they can nest). Top-level entries in the
-  `filters` array are implicitly AND-combined; reach for an explicit `or`
-  group the moment a question needs "either of these" rather than "all of
-  these" — mixing dimension and measure conditions inside the same `and`/`or`
-  group isn't supported, keep those separate.
+  a condition or a group (they can nest). Top-level entries in the `filters`
+  array are implicitly AND-combined; reach for an explicit `or` group the
+  moment a question needs "either of these" rather than "all of these" —
+  mixing dimension and measure conditions inside the same `and`/`or` group
+  isn't supported, keep those separate.
 
 Examples:
 
