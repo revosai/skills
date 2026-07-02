@@ -24,6 +24,17 @@ a project with `revos init`.
 | [`query-semantic-model`](data-engineering/query-semantic-model) | Run a Cube.js query and render the result inline as a table / chart. |
 | [`visualize-semantic-model`](data-engineering/visualize-semantic-model) | Render a `model-graph.png` of the cube relationships. |
 
+### `platform`
+
+Do in chat what you'd otherwise do in the RevOS app. Starts with querying your
+live semantic model in plain English — more of the app's capabilities land here
+over time. Connects your AI assistant to your org's RevOS data over MCP,
+registered via [`.mcp.json`](platform/.mcp.json).
+
+| Skill | What it does |
+|---|---|
+| [`query-semantic-model`](platform/skills/query-semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
+
 ## Install
 
 ### skills.sh (`npx skills`)
@@ -55,6 +66,36 @@ Each bundle is also a plugin in the `revos` marketplace:
 /plugin install data-engineering@revos
 ```
 
+### `platform` — MCP connector
+
+`platform` is aimed at business users, most of whom aren't in Claude Code at
+all, so it installs differently — it registers an MCP server, not just skill
+files, and `npx skills add` has no defined way to also register a plugin's
+`.mcp.json`. Two paths:
+
+**Claude Code plugin** — registers the MCP server and skill together; OAuth
+against your RevOS org happens automatically on first tool call, no manual
+token needed:
+
+```bash
+/plugin marketplace add revosai/skills
+/plugin install platform@revos
+```
+
+**Claude.ai / ChatGPT connector (no Claude Code required)** — paste the MCP
+URL directly into the app's connector settings (Claude.ai: Settings →
+Connectors → Add custom connector; ChatGPT: Connectors → Add MCP server):
+
+```
+https://api.revos.ai/mcp
+```
+
+OAuth happens automatically in-browser the first time a tool is called — no
+manual token, no CLI, no local files. This path has no skill attached, so the
+assistant relies on the tool descriptions alone; expect a thinner experience
+than the plugin path (no chart-rendering convention, no join-ambiguity
+guidance).
+
 ### Manual
 
 Each skill is a self-contained folder under its bundle (e.g.
@@ -69,8 +110,9 @@ watches — e.g. `.claude/skills/<name>/` (project) or `~/.claude/skills/<name>/
 .
 ├── .claude-plugin/
 │   └── marketplace.json       # Claude Code marketplace manifest (one plugin per bundle)
-└── <bundle>/                  # e.g. data-engineering/
-    └── <skill-name>/
+└── <bundle>/                  # e.g. data-engineering/, platform/
+    ├── .mcp.json               # optional — MCP server(s) this bundle registers
+    └── <skill-name>/           # or skills/<skill-name>/, see marketplace.json's `skills` override
         ├── SKILL.md           # YAML frontmatter (name, description) + instructions
         ├── references/        # optional, loaded on demand
         └── scripts/           # optional executables
