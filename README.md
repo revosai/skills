@@ -16,13 +16,13 @@ a project with `revos init`.
 
 | Skill | What it does |
 |---|---|
-| [`create-connections`](data-engineering/create-connections) | Author a RevOS Connection YAML to sync a Source into the warehouse. |
-| [`load-sample-data`](data-engineering/load-sample-data) | Populate a BigQuery dataset with sample data via `bq cp`. |
-| [`explore-lakehouse`](data-engineering/explore-lakehouse) | Inspect the BigQuery lakehouse — datasets, schemas, sample rows, null rates. |
-| [`create-dbt-transformations`](data-engineering/create-dbt-transformations) | Build dbt silver/gold models and declare raw sources. |
-| [`create-cubes`](data-engineering/create-cubes) | Generate Cube.dev cube definitions from dbt gold models. |
-| [`query-semantic-model`](data-engineering/query-semantic-model) | Run a Cube.js query and render the result inline as a table / chart. |
-| [`visualize-semantic-model`](data-engineering/visualize-semantic-model) | Render a `model-graph.png` of the cube relationships. |
+| [`create-connections`](data-engineering/skills/create-connections) | Author a RevOS Connection YAML to sync a Source into the warehouse. |
+| [`load-sample-data`](data-engineering/skills/load-sample-data) | Populate a BigQuery dataset with sample data via `bq cp`. |
+| [`explore-lakehouse`](data-engineering/skills/explore-lakehouse) | Inspect the BigQuery lakehouse — datasets, schemas, sample rows, null rates. |
+| [`create-dbt-transformations`](data-engineering/skills/create-dbt-transformations) | Build dbt silver/gold models and declare raw sources. |
+| [`create-cubes`](data-engineering/skills/create-cubes) | Generate Cube.dev cube definitions from dbt gold models. |
+| [`query-semantic-model`](data-engineering/skills/query-semantic-model) | Run a Cube.js query and render the result inline as a table / chart. |
+| [`visualize-semantic-model`](data-engineering/skills/visualize-semantic-model) | Render a `model-graph.png` of the cube relationships. |
 
 ### `platform`
 
@@ -98,9 +98,9 @@ guidance).
 
 ### Manual
 
-Each skill is a self-contained folder under its bundle (e.g.
-[`data-engineering/`](data-engineering)) with a `SKILL.md` (plus optional
-`references/` and `scripts/`). Copy a skill folder into the directory your agent
+Each skill is a self-contained folder under its bundle's `skills/` directory
+(e.g. [`data-engineering/skills/`](data-engineering/skills)) with a `SKILL.md`
+(plus optional `references/` and `scripts/`). Copy a skill folder into the directory your agent
 watches — e.g. `.claude/skills/<name>/` (project) or `~/.claude/skills/<name>/`
 (global).
 
@@ -110,16 +110,17 @@ watches — e.g. `.claude/skills/<name>/` (project) or `~/.claude/skills/<name>/
 .
 ├── .claude-plugin/
 │   └── marketplace.json       # Claude Code marketplace manifest (one plugin per bundle)
-└── <bundle>/                  # e.g. data-engineering/, platform/
+└── <bundle>/                  # e.g. data-engineering/, platform/ (plugin `source`)
     ├── .mcp.json               # optional — MCP server(s) this bundle registers
-    └── <skill-name>/           # or skills/<skill-name>/, see marketplace.json's `skills` override
-        ├── SKILL.md           # YAML frontmatter (name, description) + instructions
-        ├── references/        # optional, loaded on demand
-        └── scripts/           # optional executables
+    └── skills/                 # auto-discovered by Claude Code and skills.sh
+        └── <skill-name>/
+            ├── SKILL.md        # YAML frontmatter (name, description) + instructions
+            ├── references/     # optional, loaded on demand
+            └── scripts/        # optional executables
 ```
 
-To add a new bundle: create a top-level `<bundle>/` directory of skill folders and
-add a matching plugin entry to `marketplace.json`.
+To add a new bundle: create a top-level `<bundle>/skills/` directory of skill folders
+and add a matching plugin entry (with `source` pointing at the bundle) to `marketplace.json`.
 
 ## License
 
