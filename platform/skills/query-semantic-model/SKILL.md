@@ -13,7 +13,7 @@ description: >
 # Query Semantic Model
 
 Answer business questions by querying the org's live semantic model over the
-`platform` MCP server and rendering the result directly in the chat. Three
+`RevOS` MCP server and rendering the result directly in the chat. Three
 tools do everything you need: `cube_list` discovers the available datasets,
 `cube_describe` lists a dataset's fields, and `cube_query` runs the query and
 returns rows.

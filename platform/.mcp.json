@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "platform": {
+    "RevOS": {
       "type": "http",
       "url": "https://api.revos.ai/mcp"
     }
