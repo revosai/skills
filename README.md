@@ -90,8 +90,21 @@ Claude chat and Cowork can install straight from this repo's plugin marketplace 
 
    <img src="docs/images/cowork-05-installed-plugins.png" width="700" alt="Installed plugins under Personal">
 
-6. Click **+** on the plugin(s) you want to install.
-7. Open the plugin's settings to activate it — for `platform`, this is where the RevOS OAuth connector gets enabled.
+6. Click **+** on the plugin(s) you want to install. Once installed, the **+** turns into a **⚙️** you can click to open its settings.
+
+   <img src="docs/images/cowork-06-plugin-installed.png" width="320" alt="Installed plugin card with settings gear icon">
+
+7. In the plugin's settings, the **Skills** tab lists the skills it added (e.g. `/query-semantic-model`).
+
+   <img src="docs/images/cowork-07-plugin-settings-skills.png" width="600" alt="Plugin settings, Skills tab">
+
+8. For `platform`, switch to the **Connectors** tab and click **Connect** to authorize the RevOS MCP connector — this step is required before the skill can actually query your data.
+
+   <img src="docs/images/cowork-08-plugin-settings-connectors.png" width="600" alt="Plugin settings, Connectors tab with Connect button">
+
+9. This opens RevOS's OAuth screen in your browser. Pick your organization from the dropdown and click **Allow**. You'll land back in Claude with a "Connected for RevOS" confirmation.
+
+   <img src="docs/images/cowork-09-oauth-authorize.png" width="360" alt="RevOS OAuth authorization screen">
 
 ### `platform` — MCP connector
 
