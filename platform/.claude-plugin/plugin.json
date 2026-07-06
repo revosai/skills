@@ -1,0 +1,9 @@
+{
+  "name": "platform",
+  "description": "Do in chat what you'd otherwise do in the RevOS app — starting with querying your live semantic model in plain English, no BI tool or CLI required. Connects your AI assistant to your org's RevOS data over MCP.",
+  "version": "0.4.0",
+  "author": {
+    "name": "RevOS",
+    "email": "dev@revos.ai"
+  }
+}
