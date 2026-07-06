@@ -106,6 +106,13 @@ Claude chat and Cowork can install straight from this repo's plugin marketplace 
 
    <img src="docs/images/cowork-09-oauth-authorize.png" width="360" alt="RevOS OAuth authorization screen">
 
+10. That's it — ask a business question in plain English and Claude queries your semantic model live:
+
+    > Hi! Can you tell me which products are ordered most often?
+
+    <img src="docs/images/cowork-10-query-in-progress.png" width="700" alt="Claude querying the semantic model via cube list/describe/query">
+    <img src="docs/images/cowork-11-query-result.png" width="500" alt="Top 10 most-ordered products result table">
+
 ### `platform` — MCP connector
 
 `platform` is aimed at business users, most of whom aren't in Claude Code at
