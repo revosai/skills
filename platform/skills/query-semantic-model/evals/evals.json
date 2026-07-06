@@ -1,0 +1,114 @@
+{
+  "skill_name": "query-semantic-model",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What's in my semantic model? What can I actually query here?",
+      "expected_output": "A discovery-only answer: the skill calls cube_list (and optionally cube_describe on a couple of cubes) and summarizes the available cubes/fields in prose or a short table. No cube_query is run since the user didn't ask a data question.",
+      "expectations": [
+        "cube_list was called",
+        "cube_query was NOT called",
+        "The response lists or summarizes the available cubes/datasets by name",
+        "No fabricated cube or field names are used — only names that would come from cube_list/cube_describe"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Can you describe the gold_order_items_enriched cube for me?",
+      "expected_output": "The skill calls cube_describe on that cube and presents its measures, dimensions, and segments — no query is run.",
+      "expectations": [
+        "cube_describe was called with the named cube",
+        "cube_query was NOT called",
+        "The response enumerates measures and/or dimensions returned by cube_describe",
+        "Member names are shown in the <CubeName>.<member> form"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Query the semantic model for me.",
+      "expected_output": "Given no concrete question, the skill doesn't guess a query. It either discovers and asks a clarifying question about what business question to answer, or shows what's available and asks the user to pick.",
+      "expectations": [
+        "The skill does not invent an arbitrary measure/dimension combination without any basis in the request",
+        "cube_list and/or cube_describe was called before any cube_query",
+        "The response asks the user what they want to know or offers concrete options grounded in the discovered cubes"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "What are our top 10 traffic sources by order count?",
+      "expected_output": "The skill discovers the right cube/members, runs a cube_query with dimensions=[traffic_source-like member], measures=[count-like member], limit=10, and an order clause on the measure descending. Result renders as a markdown table plus a bar chart artifact, with a short explanation naming the top source.",
+      "expectations": [
+        "cube_describe was called before building the query",
+        "cube_query was called with limit set to 10",
+        "cube_query included an order clause sorting the count measure descending",
+        "The rendered output includes a markdown table with right-aligned numeric column",
+        "A chart artifact was created (one measure + one dimension)",
+        "The explanation names the top traffic source and its value"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Show me monthly revenue for the last 12 months.",
+      "expected_output": "A single-measure, single-time-dimension query with granularity=month and dateRange='last 12 months', rendered as a table and a time-series chart.",
+      "expectations": [
+        "cube_query was called with a timeDimensions entry using granularity 'month'",
+        "The dateRange used corresponds to the last 12 months",
+        "The rendered output includes a table",
+        "A chart artifact was created showing the trend over time",
+        "The explanation calls out the highest and/or lowest month"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Break down revenue by traffic source and by country.",
+      "expected_output": "A two-dimension query. Since it has 2+ dimensions, only a table is rendered — no chart is attempted.",
+      "expectations": [
+        "cube_query was called with two dimensions",
+        "The response includes a markdown table",
+        "No chart artifact was created, and the response does not apologize for or fake a chart via text characters"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "What's total revenue by user country?",
+      "expected_output": "When the cube(s) needed to answer this could join to the user/country dimension via more than one plausible path and the skill can't tell which is correct from names/descriptions alone, it should surface the ambiguity and ask the user to confirm the intended grain/relationship instead of silently picking a joinHints path and running the query.",
+      "expectations": [
+        "The skill does not silently guess a join path when more than one plausible relationship exists between the cubes involved",
+        "If it does proceed with a joinHints-qualified query, it explicitly states in its explanation which join path it used and why",
+        "If ambiguous, the response asks the user to confirm the relationship/grain rather than presenting a single unqualified number as definitive"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "How many orders were refunded or flagged as test orders last month?",
+      "expected_output": "A filtered query using an 'or' group combining two equals conditions on separate dimension members, scoped to last month via a time dimension.",
+      "expectations": [
+        "cube_query was called with a filters array containing an 'or' group",
+        "The 'or' group contains two distinct equals conditions (refunded, test order)",
+        "The query is scoped to last month, either via a dateRange filter or a timeDimensions entry",
+        "The rendered output includes a table with the resulting count"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Run a cube query for revenue by traffic_source that isn't a real field, just make something up if it doesn't exist.",
+      "expected_output": "The skill refuses to invent a member name even when explicitly asked to. It checks cube_describe first and either finds a real matching member or tells the user no such field exists.",
+      "expectations": [
+        "cube_describe was called to check for a real member before running any query",
+        "No fabricated member name is passed to cube_query",
+        "If no matching field exists, the response says so plainly instead of inventing one"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Plot our weekly signups for this quarter.",
+      "expected_output": "cube_list returns no cubes (simulated empty-org scenario). The skill reports that the organization doesn't appear to have a semantic model set up, without guessing why or fabricating cube names.",
+      "expectations": [
+        "cube_list was called",
+        "When cube_list returns no cubes, the response tells the user their org doesn't appear to have a semantic model set up yet",
+        "No cube_query was attempted after an empty cube_list result",
+        "The response does not speculate about the root cause of the missing semantic model"
+      ]
+    }
+  ]
+}
