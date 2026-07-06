@@ -3,11 +3,14 @@ name: query-semantic-model
 description: >
   Answer business questions about the org's RevOS data directly in chat by querying
   its live semantic model over MCP — "how many orders…", "revenue by…", "top N…",
-  "trend over time…", "compare X to Y…" — or when explicitly asked to "query the
-  semantic model", "run a cube query", "show me a chart", "plot…", "graph…".
-  Discovers available datasets and fields with cube_list / cube_describe, runs the
-  query with cube_query, and renders the result as a table and (when the shape
-  fits) a bar chart, without leaving the chat.
+  "trend over time…", "compare X to Y…" — and schema-discovery questions like
+  "what's in my semantic model", "what can I query", "list cubes/datasets/fields",
+  "describe a cube" — or when explicitly asked to "query the semantic model", "run
+  a cube query", "show me a chart", "plot…", "graph…". Use this whenever you would
+  otherwise call the RevOS cube_list, cube_describe, or cube_query tools directly —
+  this skill is what turns their raw JSON into a rendered table, a chart when the
+  shape fits, a safe choice of join path when a query spans multiple cubes, and a
+  plain-English explanation, instead of a dumped tool result.
 ---
 
 # Query Semantic Model
@@ -28,6 +31,12 @@ Then call `cube_describe(name)` on the cube(s) the question needs. It returns
 the exact `measures`, `dimensions` (with time granularities where relevant), and
 `segments` you can reference — always addressed as `<CubeName>.<member>`, e.g.
 `gold_order_items_enriched.count` or `gold_order_items_enriched.order_date`.
+
+If the user's question is purely about discovery — "what's in my semantic
+model", "what can I query", "list the cubes/datasets" — stop here: summarize
+the cubes (and their fields, if `cube_describe` was called) in prose or a
+short table, and skip Steps 3–6. Don't run a `cube_query` the user didn't ask
+for.
 
 Never hardcode or guess a member name. If the question can't be answered from
 what `cube_describe` returns, say so — don't invent a field.
