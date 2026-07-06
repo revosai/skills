@@ -66,6 +66,53 @@ Each bundle is also a plugin in the `revos` marketplace:
 /plugin install data-engineering@revos
 ```
 
+### Cowork / claude.ai (plugin marketplace)
+
+Claude chat and Cowork can install straight from this repo's plugin marketplace too, no CLI required:
+
+1. Open **Customize** in the left sidebar (chat or Cowork).
+
+   <img src="docs/images/cowork-01-customize.png" width="320" alt="Customize in the left sidebar">
+
+2. Under **Personal plugins** (or **Organization plugins**), click **+** — or **Browse plugins** if you don't have any yet.
+
+   <img src="docs/images/cowork-02-plugins-panel.png" width="320" alt="Personal plugins panel">
+
+3. In the Directory, go to the **Plugins** tab, click **+** in the top right, and choose **Add from a repository**.
+
+   <img src="docs/images/cowork-03-add-marketplace.png" width="600" alt="Add marketplace dialog">
+
+4. Enter `revosai/skills` in the **URL** field (or pick it from the dropdown) and click **Sync**.
+
+   <img src="docs/images/cowork-04-add-from-repository.png" width="480" alt="Add from a repository, URL field">
+
+5. Switch to the **Personal** tab — you'll see the `skills` marketplace listing **RevOS Data Engineering** and **RevOS Platform**.
+
+   <img src="docs/images/cowork-05-installed-plugins.png" width="700" alt="Installed plugins under Personal">
+
+6. Click **+** on the plugin(s) you want to install. Once installed, the **+** turns into a **⚙️** you can click to open its settings.
+
+   <img src="docs/images/cowork-06-plugin-installed.png" width="320" alt="Installed plugin card with settings gear icon">
+
+7. In the plugin's settings, the **Skills** tab lists the skills it added (e.g. `/query-semantic-model`).
+
+   <img src="docs/images/cowork-07-plugin-settings-skills.png" width="600" alt="Plugin settings, Skills tab">
+
+8. For `platform`, switch to the **Connectors** tab and click **Connect** to authorize the RevOS MCP connector — this step is required before the skill can actually query your data.
+
+   <img src="docs/images/cowork-08-plugin-settings-connectors.png" width="600" alt="Plugin settings, Connectors tab with Connect button">
+
+9. This opens RevOS's OAuth screen in your browser. Pick your organization from the dropdown and click **Allow**. You'll land back in Claude with a "Connected for RevOS" confirmation.
+
+   <img src="docs/images/cowork-09-oauth-authorize.png" width="360" alt="RevOS OAuth authorization screen">
+
+10. That's it — ask a business question in plain English and Claude queries your semantic model live:
+
+    > Hi! Can you tell me which products are ordered most often?
+
+    <img src="docs/images/cowork-10-query-in-progress.png" width="700" alt="Claude querying the semantic model via cube list/describe/query">
+    <img src="docs/images/cowork-11-query-result.png" width="500" alt="Top 10 most-ordered products result table">
+
 ### `platform` — MCP connector
 
 `platform` is aimed at business users, most of whom aren't in Claude Code at
