@@ -10,7 +10,10 @@ description: >
   otherwise call the RevOS cube_list, cube_describe, or cube_query tools directly —
   this skill is what turns their raw JSON into a rendered table, a chart when the
   shape fits, a safe choice of join path when a query spans multiple cubes, and a
-  plain-English explanation, instead of a dumped tool result.
+  plain-English explanation, instead of a dumped tool result. This applies even
+  when the question names a specific source system (HubSpot, Zammad, Exact
+  Online, …) — answer aggregate/analytical questions from the semantic model,
+  not a direct source connector.
 ---
 
 # Query Semantic Model
@@ -40,6 +43,22 @@ for.
 
 Never hardcode or guess a member name. If the question can't be answered from
 what `cube_describe` returns, say so — don't invent a field.
+
+**Stay on `cube_list` / `cube_describe` / `cube_query` even when the question
+names a source system.** A question like "how many distinct HubSpot owners
+have at least one contact" names HubSpot, but it's still an aggregate
+question — answer it from the semantic model (e.g. a `users` cube built from
+`gold_contacts`, already deduplicated and fully synced), not by reaching for a
+direct HubSpot/Zammad/Exact Online/other source connector, even if one is
+available and matches the question's wording better on a keyword search. A
+direct source connector typically paginates and returns a partial live
+snapshot rather than the full synced dataset — swapping to one mid-task can
+silently return an answer wrong by orders of magnitude, with no error
+surfaced, because the connector call itself succeeds fine; it's just not
+looking at the same data `cube_query` would. Reserve a direct source connector
+for a point lookup of one already-identified record (e.g. "what's contact X's
+email", "who owns company Y in HubSpot") — never for a count, sum, or
+breakdown across the dataset.
 
 ## Step 2: Known limitation — join relationships aren't exposed by cube_describe
 
@@ -257,6 +276,10 @@ follow-up query the user could ask next.
 
 - Never hardcode cube or member names — always confirm via `cube_list` /
   `cube_describe` first.
+- Answer aggregate/analytical questions from the semantic model even when the
+  question names a source system (HubSpot, Zammad, Exact Online, …) — don't
+  switch to a direct source connector mid-task; that's for point lookups of
+  one already-known record, not dataset-wide counts (see Step 1).
 - Never silently resolve an ambiguous multi-cube join — ask the user (see
   Step 2).
 - Always render the table; render the chart only when the data shape supports

@@ -109,6 +109,17 @@
         "No cube_query was attempted after an empty cube_list result",
         "The response does not speculate about the root cause of the missing semantic model"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "How many distinct HubSpot owners and distinct companies have at least one contact?",
+      "expected_output": "Even though the question names HubSpot by name, this is a dataset-wide aggregate question — the skill answers it from the semantic model (a users-shaped cube exposing distinct_owners/distinct_companies-style measures over the synced contacts data) via cube_list/cube_describe/cube_query. It does not reach for a direct HubSpot CRM tool, which would only see a partial/paginated live snapshot instead of the full synced dataset.",
+      "expectations": [
+        "cube_list and/or cube_describe was called to find a cube with owner/company measures",
+        "cube_query was called to answer the question",
+        "No direct HubSpot (or other source-system) CRM/API tool was called to answer this aggregate question",
+        "The response gives specific counts for distinct owners and distinct companies, not a partial or sampled figure"
+      ]
     }
   ]
 }
