@@ -10,7 +10,10 @@ description: >
   otherwise call the RevOS cube_list, cube_describe, or cube_query tools directly —
   this skill is what turns their raw JSON into a rendered table, a chart when the
   shape fits, a safe choice of join path when a query spans multiple cubes, and a
-  plain-English explanation, instead of a dumped tool result.
+  plain-English explanation, instead of a dumped tool result. This applies even
+  when the question names a specific source system (HubSpot, Zammad, Exact
+  Online, …) — answer aggregate/analytical questions from the semantic model,
+  not a direct source connector.
 ---
 
 # Query Semantic Model
@@ -24,13 +27,23 @@ returns rows.
 ## Step 1: Discover what's queryable
 
 Before guessing member names, call `cube_list` (optionally with a `search`
-keyword) to see the cubes/views available to the org, each with a title,
+keyword) to see the cubes available to the org, each with a title,
 description, and field counts.
 
+`cube_list` can surface internal, system-generated cubes alongside the
+business ones you'd expect — a helper cube backing a "latest scores" rollup,
+an internal segment cube, or similar plumbing that exists to support another
+cube's joins rather than to be queried directly. These usually stand out by a
+sparse or missing description, or a mechanical-sounding name/title. When a
+search matches both a clean, business-named cube and one of these, describe
+and query the business one unless the question is specifically about the
+internal one.
+
 Then call `cube_describe(name)` on the cube(s) the question needs. It returns
-the exact `measures`, `dimensions` (with time granularities where relevant), and
-`segments` you can reference — always addressed as `<CubeName>.<member>`, e.g.
-`gold_order_items_enriched.count` or `gold_order_items_enriched.order_date`.
+the exact `measures`, `dimensions` (with time granularities where relevant),
+`segments`, and `joins` you can reference — always addressed as
+`<CubeName>.<member>`, e.g. `gold_order_items_enriched.count` or
+`gold_order_items_enriched.order_date`. See Step 2 for what `joins` gives you.
 
 If the user's question is purely about discovery — "what's in my semantic
 model", "what can I query", "list the cubes/datasets" — stop here: summarize
@@ -41,33 +54,55 @@ for.
 Never hardcode or guess a member name. If the question can't be answered from
 what `cube_describe` returns, say so — don't invent a field.
 
-## Step 2: Known limitation — join relationships aren't exposed by cube_describe
+**Stay on `cube_list` / `cube_describe` / `cube_query` even when the question
+names a source system.** A question like "how many distinct HubSpot owners
+have at least one contact" names HubSpot, but it's still an aggregate
+question — answer it from the semantic model (e.g. a `users` cube built from
+`gold_contacts`, already deduplicated and fully synced), not by reaching for a
+direct HubSpot/Zammad/Exact Online/other source connector, even if one is
+available and matches the question's wording better on a keyword search. A
+direct source connector typically paginates and returns a partial live
+snapshot rather than the full synced dataset — swapping to one mid-task can
+silently return an answer wrong by orders of magnitude, with no error
+surfaced, because the connector call itself succeeds fine; it's just not
+looking at the same data `cube_query` would. Reserve a direct source connector
+for a point lookup of one already-identified record (e.g. "what's contact X's
+email", "who owns company Y in HubSpot") — never for a count, sum, or
+breakdown across the dataset.
 
-`cube_describe` returns only a single cube's own fields — it does **not**
-expose how cubes join to each other, or which paths exist between two cubes.
-So when more than one path connects two cubes, you can't inspect the join
-graph to see which one is right; Cube.js will otherwise pick one on its own,
-and the answer can silently change depending on which one it picks.
+## Step 2: Resolve joins from cube_describe, not from field-name guesses
+
+`cube_describe(name)` returns a `joins` array — `{ cube, relationship, sql }`
+for every other cube this one connects to, both the ones it declares a join
+to itself and the ones that declare a join *to* it (with the cardinality
+flipped so it reads correctly from this cube's side). This is real
+information, not a guess: if a question needs `gold_order_items_enriched`
+and `gold_users_with_order_stats` together, describe one of them and check
+whether the other shows up in its `joins` before doing anything else — don't
+infer a relationship just because two cubes each happen to have a
+similarly-named "account id"-shaped column.
 
 You can still pin the path explicitly with `joinHints`: a list of join paths,
 where each path is an ordered array of cube names to route through — two cubes
 for a direct join, more for a multi-hop path, e.g.
 `[["gold_order_items_enriched", "gold_users_with_order_stats"]]` or
-`[["orders", "line_items", "products"]]`. But you're choosing that path blind
-— you have a tool to express a path, not a way to discover which path is
-correct.
+`[["orders", "line_items", "products"]]` — and make sure every consecutive
+pair in it is a real edge you saw in some cube's `joins`. `cube_query` checks
+this itself now: a `joinHints` pair with no matching declared join fails with
+a clear error naming the bad pair, instead of silently falling back to some
+other path. Treat that error as a signal to go back and re-check
+`cube_describe` on the cubes involved — not to retry with a different guess.
 
-So: only set `joinHints` when the path is genuinely obvious from the cube and
-field names/descriptions. When a question spans more than one cube and you
-can't point to an obviously singular relationship between them — two
-plausible routes to the same field, or a fact table that could relate to a
-dimension both directly and through a third cube — **don't guess**. State the
-ambiguity plainly and ask the user to confirm the intended relationship or
-grain — e.g. "revenue per order item" vs. "revenue per user" — before running
-the query. Whenever you do set `joinHints`, say so in your explanation
-afterward — which path you used and why — so the user can catch a wrong
-assumption. Prefer the simplest single-cube answer whenever the question
-doesn't actually require crossing cubes at all.
+Genuine ambiguity — two cubes connected by more than one distinct declared
+path — is now something you can verify instead of suspect: it shows up as
+more than one route through `joins` between the same pair (e.g. directly,
+and also via a third cube). When that's real, **don't silently pick one**.
+State the ambiguity plainly and ask the user to confirm the intended
+relationship or grain — e.g. "revenue per order item" vs. "revenue per
+user" — before running the query. Whenever you do set `joinHints`, say so in
+your explanation afterward — which path you used and why — so the user can
+catch a wrong assumption. Prefer the simplest single-cube answer whenever the
+question doesn't actually require crossing cubes at all.
 
 ## Step 3: Build the query
 
@@ -205,8 +240,10 @@ with `offset` if the user wants it — it does **not** mean rows were silently
 dropped.
 
 If the call errors, surface the message plainly. Common causes: a mistyped
-member name (re-run `cube_describe`), or a `dateRange`/`granularity` used
-against a dimension that isn't a time dimension.
+member name (re-run `cube_describe`), a `dateRange`/`granularity` used
+against a dimension that isn't a time dimension, or a `joinHints` pair with
+no matching declared join (re-check `cube_describe`'s `joins` on the cubes
+involved — see Step 2 — rather than guessing a different path).
 
 ## Step 5: Render the result in chat
 
@@ -257,8 +294,17 @@ follow-up query the user could ask next.
 
 - Never hardcode cube or member names — always confirm via `cube_list` /
   `cube_describe` first.
+- Answer aggregate/analytical questions from the semantic model even when the
+  question names a source system (HubSpot, Zammad, Exact Online, …) — don't
+  switch to a direct source connector mid-task; that's for point lookups of
+  one already-known record, not dataset-wide counts (see Step 1).
 - Never silently resolve an ambiguous multi-cube join — ask the user (see
   Step 2).
+- Confirm every `joinHints` hop against `cube_describe`'s `joins` before
+  setting it — a rejected `joinHints` call means the pair doesn't exist, not
+  that you should retry a different guess (see Step 2).
+- Prefer clearly business-named cubes over internal/system-generated ones
+  when several match a search (see Step 1).
 - Always render the table; render the chart only when the data shape supports
   it.
 - Always set `limit` deliberately for "top N" questions; be aware of the
