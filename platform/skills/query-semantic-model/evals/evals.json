@@ -71,11 +71,13 @@
     {
       "id": 7,
       "prompt": "What's total revenue by user country?",
-      "expected_output": "When the cube(s) needed to answer this could join to the user/country dimension via more than one plausible path and the skill can't tell which is correct from names/descriptions alone, it should surface the ambiguity and ask the user to confirm the intended grain/relationship instead of silently picking a joinHints path and running the query.",
+      "expected_output": "The skill calls cube_describe on the relevant cube(s) and inspects the joins each one returns before answering — it no longer has to guess blind. If joins reveals genuinely more than one distinct path connecting the cubes needed for user/country, it surfaces the ambiguity and asks the user to confirm the intended grain/relationship instead of silently picking a joinHints path. If joins reveals only one real path, it uses it directly and cites it — it should not ask the user to resolve an ambiguity that cube_describe already settled.",
       "expectations": [
-        "The skill does not silently guess a join path when more than one plausible relationship exists between the cubes involved",
-        "If it does proceed with a joinHints-qualified query, it explicitly states in its explanation which join path it used and why",
-        "If ambiguous, the response asks the user to confirm the relationship/grain rather than presenting a single unqualified number as definitive"
+        "cube_describe was called on the relevant cube(s) to inspect their joins before running cube_query",
+        "The skill does not silently guess a join path when cube_describe's joins reveals more than one distinct route between the cubes involved",
+        "If cube_describe's joins reveals only one real path, the skill uses it directly without unnecessarily asking the user to resolve a non-existent ambiguity",
+        "If it proceeds with a joinHints-qualified query, it explicitly states in its explanation which join path it used, referencing what joins showed",
+        "If genuinely ambiguous, the response asks the user to confirm the relationship/grain rather than presenting a single unqualified number as definitive"
       ]
     },
     {
@@ -119,6 +121,27 @@
         "cube_query was called to answer the question",
         "No direct HubSpot (or other source-system) CRM/API tool was called to answer this aggregate question",
         "The response gives specific counts for distinct owners and distinct companies, not a partial or sampled figure"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "What's the total value of each customer's active subscriptions, broken down by their package tier?",
+      "expected_output": "Package tier and subscription value live on different cubes that may not have a direct join — the real relationship could be a single hop or could require an intermediate cube. The skill calls cube_describe on the cubes involved and reads their joins to find the real path (direct or multi-hop) instead of assuming a direct link just because both cubes have similarly-named ID columns (e.g. two 'account id'-shaped fields).",
+      "expectations": [
+        "cube_describe was called on the subscription-value cube and the customer/package cube (or equivalent) before building the query",
+        "Any joinHints path used matches an edge actually present in some cube's joins output rather than a guessed direct link based on column-name similarity alone",
+        "If the real path requires an intermediate cube, the join path used (or described) reflects that multi-hop route rather than a fabricated direct one",
+        "The explanation states which join path was used and that it came from cube_describe's joins"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "What can you tell me about scores in my semantic model?",
+      "expected_output": "cube_list's search may match both a clear business cube and one or more internal, system-generated helper cubes (sparse or missing description, mechanical-sounding name — e.g. a cube that only exists to back a 'latest scores' rollup for another cube). The skill treats the business-relevant cube(s) as the primary answer and either sets aside the internal ones or calls out plainly that they're internal plumbing, rather than presenting an obviously internal cube as the main result.",
+      "expectations": [
+        "cube_list was called with a relevant search term",
+        "The response does not present an internal/system-generated cube (sparse description, mechanical name) as the primary answer without noting its internal, non-business nature",
+        "The skill prioritizes or clearly calls out any clean, business-named cube(s) relevant to the question"
       ]
     }
   ]
