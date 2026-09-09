@@ -4,22 +4,22 @@
     {
       "id": 1,
       "prompt": "What's in my semantic model? What can I actually query here?",
-      "expected_output": "A discovery-only answer: the skill calls cube_list (and optionally cube_describe on a couple of cubes) and summarizes the available cubes/fields in prose or a short table. No cube_query is run since the user didn't ask a data question.",
+      "expected_output": "A discovery-only answer: the skill calls api_read on the cubes resource with method 'meta' (optionally projected with fields=name,title,description) and summarizes the available cubes/fields in prose or a short table. No query is run since the user didn't ask a data question.",
       "expectations": [
-        "cube_list was called",
-        "cube_query was NOT called",
+        "api_read was called with resource 'cubes' and method 'meta'",
+        "api_read with method 'query' was NOT called",
         "The response lists or summarizes the available cubes/datasets by name",
-        "No fabricated cube or field names are used — only names that would come from cube_list/cube_describe"
+        "No fabricated cube or field names are used — only names that would come from the meta response"
       ]
     },
     {
       "id": 2,
       "prompt": "Can you describe the gold_order_items_enriched cube for me?",
-      "expected_output": "The skill calls cube_describe on that cube and presents its measures, dimensions, and segments — no query is run.",
+      "expected_output": "The skill calls api_read with method 'meta' filtered to that cube and presents its measures, dimensions, and segments — no query is run.",
       "expectations": [
-        "cube_describe was called with the named cube",
-        "cube_query was NOT called",
-        "The response enumerates measures and/or dimensions returned by cube_describe",
+        "api_read was called with method 'meta' and a params.filter naming the requested cube",
+        "api_read with method 'query' was NOT called",
+        "The response enumerates measures and/or dimensions returned by meta",
         "Member names are shown in the <CubeName>.<member> form"
       ]
     },
@@ -29,19 +29,21 @@
       "expected_output": "Given no concrete question, the skill doesn't guess a query. It either discovers and asks a clarifying question about what business question to answer, or shows what's available and asks the user to pick.",
       "expectations": [
         "The skill does not invent an arbitrary measure/dimension combination without any basis in the request",
-        "cube_list and/or cube_describe was called before any cube_query",
+        "method 'meta' was called before any method 'query'",
         "The response asks the user what they want to know or offers concrete options grounded in the discovered cubes"
       ]
     },
     {
       "id": 4,
       "prompt": "What are our top 10 traffic sources by order count?",
-      "expected_output": "The skill discovers the right cube/members, runs a cube_query with dimensions=[traffic_source-like member], measures=[count-like member], limit=10, and an order clause on the measure descending. Result renders as a markdown table plus a bar chart artifact, with a short explanation naming the top source.",
+      "expected_output": "The skill discovers the right cube/members via meta, then calls api_read with method 'query' and body.query containing dimensions=[traffic_source-like member], measures=[count-like member], limit=10, and an order clause on the measure descending. Result renders as a markdown table plus a bar chart artifact, with a short explanation naming the top source.",
       "expectations": [
-        "cube_describe was called before building the query",
-        "cube_query was called with limit set to 10",
-        "cube_query included an order clause sorting the count measure descending",
+        "method 'meta' was called before building the query",
+        "The query was sent nested as body.query, not as a bare query object",
+        "body.query.limit was set to 10",
+        "body.query included an order clause sorting the count measure descending",
         "The rendered output includes a markdown table with right-aligned numeric column",
+        "Table headers use the human titles from metadata.annotation rather than raw member names",
         "A chart artifact was created (one measure + one dimension)",
         "The explanation names the top traffic source and its value"
       ]
@@ -51,7 +53,7 @@
       "prompt": "Show me monthly revenue for the last 12 months.",
       "expected_output": "A single-measure, single-time-dimension query with granularity=month and dateRange='last 12 months', rendered as a table and a time-series chart.",
       "expectations": [
-        "cube_query was called with a timeDimensions entry using granularity 'month'",
+        "body.query included a timeDimensions entry using granularity 'month'",
         "The dateRange used corresponds to the last 12 months",
         "The rendered output includes a table",
         "A chart artifact was created showing the trend over time",
@@ -63,7 +65,7 @@
       "prompt": "Break down revenue by traffic source and by country.",
       "expected_output": "A two-dimension query. Since it has 2+ dimensions, only a table is rendered — no chart is attempted.",
       "expectations": [
-        "cube_query was called with two dimensions",
+        "body.query included two dimensions",
         "The response includes a markdown table",
         "No chart artifact was created, and the response does not apologize for or fake a chart via text characters"
       ]
@@ -71,12 +73,13 @@
     {
       "id": 7,
       "prompt": "What's total revenue by user country?",
-      "expected_output": "The skill calls cube_describe on the relevant cube(s) and inspects the joins each one returns before answering — it no longer has to guess blind. If joins reveals genuinely more than one distinct path connecting the cubes needed for user/country, it surfaces the ambiguity and asks the user to confirm the intended grain/relationship instead of silently picking a joinHints path. If joins reveals only one real path, it uses it directly and cites it — it should not ask the user to resolve an ambiguity that cube_describe already settled.",
+      "expected_output": "The skill reads the joins of the cubes involved via meta before answering. Because meta lists only the joins a cube declares itself, it must check both cubes rather than concluding from one empty joins array that there is no path. If more than one distinct route connects them, it surfaces the ambiguity and asks the user to confirm the intended grain/relationship instead of silently picking a joinHints path. If only one real path exists, it uses it and cites it — it should not manufacture an ambiguity that the joins already settled.",
       "expectations": [
-        "cube_describe was called on the relevant cube(s) to inspect their joins before running cube_query",
-        "The skill does not silently guess a join path when cube_describe's joins reveals more than one distinct route between the cubes involved",
-        "If cube_describe's joins reveals only one real path, the skill uses it directly without unnecessarily asking the user to resolve a non-existent ambiguity",
-        "If it proceeds with a joinHints-qualified query, it explicitly states in its explanation which join path it used, referencing what joins showed",
+        "method 'meta' was called on the relevant cube(s) to inspect their joins before running the query",
+        "If the first cube's joins array was empty or did not name the second cube, the skill checked the second cube's joins rather than concluding no relationship exists",
+        "The skill does not silently guess a join path when more than one distinct route connects the cubes involved",
+        "If only one real path exists, the skill uses it directly without unnecessarily asking the user to resolve a non-existent ambiguity",
+        "If it proceeds with a joinHints-qualified query, it explicitly states which join path it used and that it came from the joins reported by meta",
         "If genuinely ambiguous, the response asks the user to confirm the relationship/grain rather than presenting a single unqualified number as definitive"
       ]
     },
@@ -85,40 +88,41 @@
       "prompt": "How many orders were refunded or flagged as test orders last month?",
       "expected_output": "A filtered query using an 'or' group combining two equals conditions on separate dimension members, scoped to last month via a time dimension.",
       "expectations": [
-        "cube_query was called with a filters array containing an 'or' group",
+        "body.query included a filters array containing an 'or' group",
         "The 'or' group contains two distinct equals conditions (refunded, test order)",
         "The query is scoped to last month, either via a dateRange filter or a timeDimensions entry",
+        "The filters were placed on body.query.filters, not on params.filter",
         "The rendered output includes a table with the resulting count"
       ]
     },
     {
       "id": 9,
       "prompt": "Run a cube query for revenue by traffic_source that isn't a real field, just make something up if it doesn't exist.",
-      "expected_output": "The skill refuses to invent a member name even when explicitly asked to. It checks cube_describe first and either finds a real matching member or tells the user no such field exists.",
+      "expected_output": "The skill refuses to invent a member name even when explicitly asked to. It checks meta first and either finds a real matching member or tells the user no such field exists.",
       "expectations": [
-        "cube_describe was called to check for a real member before running any query",
-        "No fabricated member name is passed to cube_query",
+        "method 'meta' was called to check for a real member before running any query",
+        "No fabricated member name is passed to the query",
         "If no matching field exists, the response says so plainly instead of inventing one"
       ]
     },
     {
       "id": 10,
       "prompt": "Plot our weekly signups for this quarter.",
-      "expected_output": "cube_list returns no cubes (simulated empty-org scenario). The skill reports that the organization doesn't appear to have a semantic model set up, without guessing why or fabricating cube names.",
+      "expected_output": "meta returns no cubes (simulated empty-org scenario). The skill reports that the organization doesn't appear to have a semantic model set up, without guessing why or fabricating cube names.",
       "expectations": [
-        "cube_list was called",
-        "When cube_list returns no cubes, the response tells the user their org doesn't appear to have a semantic model set up yet",
-        "No cube_query was attempted after an empty cube_list result",
+        "method 'meta' was called",
+        "When meta returns no cubes, the response tells the user their org doesn't appear to have a semantic model set up yet",
+        "No query was attempted after an empty meta result",
         "The response does not speculate about the root cause of the missing semantic model"
       ]
     },
     {
       "id": 11,
       "prompt": "How many distinct HubSpot owners and distinct companies have at least one contact?",
-      "expected_output": "Even though the question names HubSpot by name, this is a dataset-wide aggregate question — the skill answers it from the semantic model (a users-shaped cube exposing distinct_owners/distinct_companies-style measures over the synced contacts data) via cube_list/cube_describe/cube_query. It does not reach for a direct HubSpot CRM tool, which would only see a partial/paginated live snapshot instead of the full synced dataset.",
+      "expected_output": "Even though the question names HubSpot by name, this is a dataset-wide aggregate question — the skill answers it from the semantic model (a users-shaped cube exposing distinct_owners/distinct_companies-style measures over the synced contacts data) via api_read on the cubes resource. It does not reach for a direct HubSpot CRM tool, which would only see a partial/paginated live snapshot instead of the full synced dataset.",
       "expectations": [
-        "cube_list and/or cube_describe was called to find a cube with owner/company measures",
-        "cube_query was called to answer the question",
+        "method 'meta' was called to find a cube with owner/company measures",
+        "method 'query' was called to answer the question",
         "No direct HubSpot (or other source-system) CRM/API tool was called to answer this aggregate question",
         "The response gives specific counts for distinct owners and distinct companies, not a partial or sampled figure"
       ]
@@ -126,22 +130,45 @@
     {
       "id": 12,
       "prompt": "What's the total value of each customer's active subscriptions, broken down by their package tier?",
-      "expected_output": "Package tier and subscription value live on different cubes that may not have a direct join — the real relationship could be a single hop or could require an intermediate cube. The skill calls cube_describe on the cubes involved and reads their joins to find the real path (direct or multi-hop) instead of assuming a direct link just because both cubes have similarly-named ID columns (e.g. two 'account id'-shaped fields).",
+      "expected_output": "Package tier and subscription value live on different cubes that may not have a direct join — the real relationship could be a single hop or could require an intermediate cube. The skill reads the joins of the cubes involved via meta to find the real path (direct or multi-hop) instead of assuming a direct link just because both cubes have similarly-named ID columns (e.g. two 'account id'-shaped fields). Because a fabricated joinHints path is accepted rather than rejected, a successful query is not evidence the path was real — the skill must have grounded every hop in an actual declared join.",
       "expectations": [
-        "cube_describe was called on the subscription-value cube and the customer/package cube (or equivalent) before building the query",
+        "method 'meta' was called on the subscription-value cube and the customer/package cube (or equivalent) before building the query",
         "Any joinHints path used matches an edge actually present in some cube's joins output rather than a guessed direct link based on column-name similarity alone",
+        "The skill does not treat a successful query result as confirmation that a guessed joinHints path was correct",
         "If the real path requires an intermediate cube, the join path used (or described) reflects that multi-hop route rather than a fabricated direct one",
-        "The explanation states which join path was used and that it came from cube_describe's joins"
+        "The explanation states which join path was used and that it came from the joins reported by meta"
       ]
     },
     {
       "id": 13,
       "prompt": "What can you tell me about scores in my semantic model?",
-      "expected_output": "cube_list's search may match both a clear business cube and one or more internal, system-generated helper cubes (sparse or missing description, mechanical-sounding name — e.g. a cube that only exists to back a 'latest scores' rollup for another cube). The skill treats the business-relevant cube(s) as the primary answer and either sets aside the internal ones or calls out plainly that they're internal plumbing, rather than presenting an obviously internal cube as the main result.",
+      "expected_output": "The meta catalogue may contain both a clear business cube and one or more internal, system-generated helper cubes (sparse or missing description, mechanical-sounding name — e.g. a cube that only exists to back a 'latest scores' rollup for another cube). The skill treats the business-relevant cube(s) as the primary answer and either sets aside the internal ones or calls out plainly that they're internal plumbing, rather than presenting an obviously internal cube as the main result.",
       "expectations": [
-        "cube_list was called with a relevant search term",
+        "method 'meta' was called with a relevant params.filter or a projected catalogue read",
         "The response does not present an internal/system-generated cube (sparse description, mechanical name) as the primary answer without noting its internal, non-business nature",
         "The skill prioritizes or clearly calls out any clean, business-named cube(s) relevant to the question"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Does the customers cube connect to anything? I want revenue per customer.",
+      "expected_output": "The customers cube declares no joins of its own, but several other cubes declare joins pointing at it, so its joins array comes back empty while it is in fact joinable. The skill must not conclude from the empty array that no relationship exists — it should check the revenue-side cube's joins, find the edge there, and answer.",
+      "expectations": [
+        "method 'meta' was called on more than one cube after the first returned an empty or incomplete joins array",
+        "The response does not claim the customers cube has no relationships or cannot be joined",
+        "The join edge used was found on the cube that declares it, not assumed from column-name similarity",
+        "The skill answers the revenue-per-customer question rather than stopping at the empty joins array"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Give me every order line from the last two years so I can look through them.",
+      "expected_output": "An open-ended pull with no natural bound. The skill sets an explicit limit rather than relying on the endpoint's default, which is sized for a warehouse rather than a chat window, and sets total so it can report how much was left out.",
+      "expectations": [
+        "body.query.limit was set explicitly rather than omitted",
+        "body.query.total was set to true, or the response otherwise reports how many rows matched beyond the ones shown",
+        "The response quotes metadata.limit (the limit actually applied) when saying the result was truncated",
+        "The skill offers paging via offset rather than silently presenting a truncated result as complete"
       ]
     }
   ]
