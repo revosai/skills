@@ -27,7 +27,7 @@ a project with `revos init`.
 ### `platform`
 
 Do in chat what you'd otherwise do in the RevOS app. Starts with querying your
-live semantic model in plain English and building segments — more of the app's capabilities land here
+live semantic model in plain English, building segments, and modelling the cubes behind them — more of the app's capabilities land here
 over time. Connects your AI assistant to your org's RevOS data over MCP,
 registered via [`.mcp.json`](platform/.mcp.json).
 
@@ -35,6 +35,7 @@ registered via [`.mcp.json`](platform/.mcp.json).
 |---|---|
 | [`query-semantic-model`](platform/skills/query-semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
 | [`segments`](platform/skills/segments) | Create and edit segments (saved audiences over the semantic model), scope a table's rows with one, and diagnose a FAILED or wrong-looking segment. |
+| [`cubes`](platform/skills/cubes) | Read, create, edit, and delete the cube definitions behind the semantic model — with a dependency check before removals and a compile-and-query check (and rollback) after every write. |
 
 ## Install
 

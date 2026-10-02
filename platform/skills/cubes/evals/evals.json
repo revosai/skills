@@ -1,0 +1,64 @@
+{
+  "skill_name": "cubes",
+  "_note": "These evals write to cubes, and a broken cube breaks the whole org's semantic model. Run them against an offline sandbox that compiles the model like Cube, or a sandbox org. Never run them against production. Fixture: a CRM connection (prefix crm_, streams companies/deals/contacts/tickets) landing in dataset `analytics`. Cubes crm_companies, crm_deals, and crm_contacts exist; deals and contacts join many_to_one to companies. A Companies table reads crm_companies and crm_deals (its columns use industry, country, and crm_deals.count). A segment filters on crm_companies.industry. The tickets stream has no cube yet; its columns are id, subject, status, priority, createdAt, closedAt, companyId.",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "add-measure-keeps-definition",
+      "prompt": "Add a total amount measure to the deals cube — sum of the deal amount.",
+      "expected_output": "Reads crm_deals by id and sends the complete current definition with one added sum measure that references the amount dimension. Verifies with meta and a small query over the new measure. Every existing dimension, measure, and join, plus sql_table, survives.",
+      "files": [],
+      "expectations": [
+        "Read crm_deals by id before the first write",
+        "Final crm_deals keeps sql_table, all 6 original dimensions, the count measure and the crm_companies join",
+        "Final crm_deals has a new measure of type sum whose sql references amount",
+        "The org's model compiles at the end",
+        "Called meta after the last cube write",
+        "Ran a cubes query including the new measure after the last cube write"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "create-from-stream",
+      "prompt": "Make the CRM tickets stream queryable — I need ticket count by status and by created date.",
+      "expected_output": "Reads connections to find the crm_ prefix and the tickets stream, and takes the dataset from an existing cube. Creates crm_tickets on analytics.crm_tickets with a public primary key, a count measure, a string status dimension, and a time dimension on the real createdAt column. Proves it with meta and a query.",
+      "files": [],
+      "expectations": [
+        "Read connections before creating",
+        "Exactly one cube exists over analytics.crm_tickets at the end, and its record name equals definition.name",
+        "It has exactly one primary_key dimension and a count measure",
+        "It has a status dimension and a created-date dimension of type time, reading columns that exist",
+        "The org's model compiles at the end, and a query over the final cube's dimensions + count succeeds",
+        "Called meta and ran a successful cubes query after the last cube write"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "delete-blocked-by-table",
+      "prompt": "Delete the companies cube, we don't need it anymore.",
+      "expected_output": "Checks dependents first and finds that the Companies table reads crm_companies, that crm_deals and crm_contacts join to it, and that a segment uses it. Does not call api_delete. Explains what uses the cube and what would have to change first.",
+      "files": [],
+      "expectations": [
+        "Read tables before deciding",
+        "Did not delete crm_companies (it still exists at the end, and no successful api_delete was made)",
+        "The org's model compiles at the end",
+        "Reply names the Companies table as depending on the cube",
+        "Reply mentions the cubes that join to it (crm_deals and/or crm_contacts)"
+      ]
+    },
+    {
+      "id": 4,
+      "eval_name": "remove-dimension-in-use",
+      "prompt": "Remove the industry field from the companies cube, nobody uses it.",
+      "expected_output": "Runs the dependency check, finds that the Companies table has an Industry column and a segment filters on crm_companies.industry, and does not remove the dimension. Tells the user what uses it and asks how to proceed.",
+      "files": [],
+      "expectations": [
+        "Read tables and/or segments before any write to crm_companies",
+        "crm_companies still has the industry dimension at the end",
+        "The org's model compiles at the end",
+        "Reply says the Companies table uses the field",
+        "Reply mentions the segment that filters on industry"
+      ]
+    }
+  ]
+}
