@@ -38,8 +38,9 @@ You reach them through the RevOS MCP server's generic tools:
 | `api_read { "resource": "action-runs", "id": "<run id>" }` | one run, with its `input` and `result` |
 | `api_write { "resource": "action-runs", "data": { "tableId": "…", "columnId": "…" } }` | run an action column — see [references/run.md](references/run.md) first |
 
-`api_details({ resource: "action-runs" })` is the authority on the filter
-and field names; this skill covers what that schema can't tell you.
+The calls in this skill are complete as written: go straight to them.
+`api_search` and `api_details` are for when one of them is refused, or you
+need a filter or field this skill doesn't name.
 
 ## Something failed: start from the run
 
@@ -50,7 +51,21 @@ it anyway costs the user a slower answer buried in detail they didn't ask
 for.
 
 **Find the run.** The user may hand you a run id straight from the
-action-run drawer in the UI. Otherwise list, without the payloads:
+action-run drawer in the UI. More often they name a record — "deal
+31415926535", a company, a contact. That id is the row's `objectId`: a row
+usually carries the id its record has in the source system. One call then
+returns the newest runs for it with their payloads — there is no need to
+read the run by id afterwards — and the newest one tells you whether it is
+still failing:
+
+```json
+api_read { "resource": "action-runs",
+           "params": { "filter": "objectId == \"<record id>\"",
+                       "orderBy": "createdAt desc", "pageSize": 3 } }
+```
+
+With neither a run id nor a record, list the failures without the
+payloads:
 
 ```json
 api_read { "resource": "action-runs",
@@ -66,10 +81,12 @@ know them.
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
 `status`, `attemptsMade`, `input` and `result`.
 
-**Read the organization's error instructions** for the run's `actionId`,
-right after the run: one more call, described
+**Read the organization's error instructions** for the run's `actionId`.
+This is the next call after the run, every time, however clear the error
+already looks: `api_read` on `actions` with that id and
+`method: "errorInstructions"`, described
 [below](#the-organizations-error-instructions). They often map the error
-message straight to its cause and fix.
+message straight to its cause and fix, and say who fixes it.
 
 **Where the error lives.** There is no separate error column. `result`
 holds the whole run result, a union discriminated by `metadata.success`. On

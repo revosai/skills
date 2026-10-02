@@ -68,6 +68,20 @@
         "Reply states that without specific rows the run covers every row in the table's default view",
         "Reply asks the user to confirm or narrow the scope"
       ]
+    },
+    {
+      "id": 6,
+      "eval_name": "diagnose-by-record-id",
+      "prompt": "Why isn't the Globex expansion deal syncing? Its id is <the row's objectId>.",
+      "expected_output": "Goes straight to the runs for that record: one api_read on action-runs filtered by objectId (newest first, with payloads), then errorInstructions for the run's action, then the answer. No api_search or api_details, and no separate read of the run by id.",
+      "files": [],
+      "expectations": [
+        "Called api_read on action-runs with a filter on objectId equal to the given id",
+        "Called api_read on actions with method errorInstructions and the run's actionId as id",
+        "Did not call api_search or api_details",
+        "Made at most 3 api_read calls before answering",
+        "Reply says the deal owner's email is missing in the CRM"
+      ]
     }
   ]
 }
