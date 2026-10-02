@@ -22,7 +22,7 @@
     {
       "name": "platform",
       "displayName": "RevOS Platform",
-      "description": "Do in chat what you'd otherwise do in the RevOS app — query your live semantic model in plain English, build tables and segments, and model the cubes behind them, no BI tool or CLI required. Connects your AI assistant to your org's RevOS data over MCP.",
+      "description": "Do in chat what you'd otherwise do in the RevOS app — query your live semantic model in plain English, build tables and segments, model the cubes behind them, and run and debug actions, no BI tool or CLI required. Connects your AI assistant to your org's RevOS data over MCP.",
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/revosai/skills.git",
