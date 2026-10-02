@@ -213,16 +213,26 @@ catch: **each field you send replaces the stored one whole.** `filter` and
 condition you left out is gone.
 
 1. `api_read({ resource: "segments", id })` fresh, right before writing.
-2. Start from its current `filter` (and `cubes`) and change only what the
-   user asked for. A new string value gets the same stored-value check as
-   on create (step 3 above) — the existing conditions' spelling is a hint,
-   not proof of how the new value is stored.
-3. If the new condition references a cube that isn't in `cubes` yet, add its
+2. **Look up how any new value is stored** before you add it. The user's
+   word for it ("startup plan", "churned", "EMEA") came from conversation,
+   not from the data, and the existing conditions only prove how *their*
+   values are spelled. Query the dimension the new condition is on:
+
+   ```json
+   api_read { "resource": "cubes", "method": "query",
+              "body": { "query": { "dimensions": ["revos_prod_Organization.pricingPlan"], "limit": 20 } } }
+   ```
+
+   Use the stored spelling. If no stored value matches what the user said,
+   ask instead of writing a condition that matches nothing.
+3. Start from the current `filter` (and `cubes`) and change only what the
+   user asked for.
+4. If the new condition references a cube that isn't in `cubes` yet, add its
    `joinPath` entry and send the whole `cubes` array too. If you removed the
    last condition on some cube, drop that entry.
-4. Don't send `type` — it isn't updatable — and don't try to change the root
+5. Don't send `type` — it isn't updatable — and don't try to change the root
    (`cubes[0]`); for a different root, create a new segment.
-5. After the write, `api_read` the segment again and check the `filter` is
+6. After the write, `api_read` the segment again and check the `filter` is
    the one you meant to save — a bumped `version` alone doesn't prove the
    change landed.
 
