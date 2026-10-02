@@ -1,15 +1,16 @@
 {
   "skill_name": "actions",
-  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` has an empty value under `col_owner_email`. The org has instructions at two scopes: `org/<integration>` says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; `org/<integration>/<action id>` maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'.",
+  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` has an empty value under `col_owner_email`. The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'.",
   "evals": [
     {
       "id": 1,
       "eval_name": "shallow-diagnosis",
       "prompt": "One of our action runs failed recently. Find it and tell me why.",
-      "expected_output": "Lists failed runs newest first, reads the newest one, and answers from its result alone: the target system rejected the credentials, which is permanent, so re-running unchanged won't help. Doesn't read the table or the mapping, because the run's own result already names the cause.",
+      "expected_output": "Lists failed runs newest first, reads the newest one and the organization's error instructions for its action, and answers from those: the target system rejected the credentials, which is permanent, so re-running unchanged won't help. Doesn't read the table or the mapping, because the run's own result already names the cause.",
       "files": [],
       "expectations": [
         "Read action-runs (list and/or get) before answering",
+        "Read errorInstructions on the failed run's action before answering",
         "Did not read the tables resource",
         "Made at most 6 api_read calls",
         "Reply names rejected credentials as the cause, quoting or closely following metadata.error.message",
@@ -33,12 +34,10 @@
       "id": 3,
       "eval_name": "org-instructions-compose",
       "prompt": "Why didn't Globex expansion sync, and what should I do about it?",
-      "expected_output": "Diagnoses the empty owner email from the run's input and the mapping, then reads the organization's own instructions for the scope — both the integration-level and the action-level one — before recommending. The answer uses their cause (the deal owner has no email in the CRM) and their resolution (fix it in the CRM; it reaches RevOS with the next sync within 1-2 hours), and says the fault is upstream data rather than the mapping.",
+      "expected_output": "Diagnoses the empty owner email from the run's input and the mapping, then reads the organization's own instructions for the run's action — one `errorInstructions` read, which carries both the integration-level and the action-level text — before recommending. The answer uses their cause (the deal owner has no email in the CRM) and their resolution (fix it in the CRM; it reaches RevOS with the next sync within 1-2 hours), and says the fault is upstream data rather than the mapping.",
       "files": [],
       "expectations": [
-        "Called skills_list",
-        "Called skills_read on the integration-level org skill for the action's integration",
-        "Called skills_read on the action-level org skill for the run's action",
+        "Called api_read on actions with method errorInstructions and the run's actionId as id",
         "Reply says the deal owner's email is missing in the CRM",
         "Reply says the fix is made in the CRM and arrives with the next sync (1-2 hours)",
         "Reply does not propose changing the column mapping"

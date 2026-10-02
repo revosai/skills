@@ -10,13 +10,13 @@ Go here when the error is _about a value_: a field the target system calls
 missing, empty or malformed, or an `input` that plainly isn't what the
 action expects.
 
-- `api_read { "resource": "actions", "id": "<the run's actionId>" }` —
-  `name`, `description` and `integrationName`. The description is what the
-  action expects to be given.
 - `api_read { "resource": "tables", "id": "<the run's modelId>" }`. The
   column that ran is the one in `objectsColumns` whose `id` equals the run's
   `columnId`, and **its `config.input` is the mapping** the action was
   called with.
+- Only when you can't tell what the action expects to be given:
+  `api_read { "resource": "actions", "id": "<the run's actionId>" }` — its
+  `description` says so.
 
 Two things to read out of that mapping:
 
@@ -53,14 +53,14 @@ action failed for the related record before concluding the data is simply
 missing at the source: a deal can't sync because the company it points at
 never got its id. List that table's failed runs (`modelId` is the source
 table's id) and look for the related record by `objectName`. If it has
-one, _that_ error is the root cause, and it is diagnosed with that action's
-own instructions, not this one's.
+one, _that_ error is the root cause. Diagnose it as its own run: when it
+belongs to a different action, read that action's `errorInstructions` and
+use those, not this one's.
 
 ## Before you propose a fix
 
-Read the organization's own instructions for the run's scope, as SKILL.md
-describes — once you have a diagnosis, not as a reflex before it. They may
-turn your obvious recommendation around.
+Check the recommendation against the organization's error instructions you
+read with the run (SKILL.md). They may turn your obvious fix around.
 
 ## Where to land the blame
 
