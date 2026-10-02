@@ -44,9 +44,9 @@ nothing.
 // List / get / named reads — `params` for query-string filters, `body` for a named read that takes one
 api_read  { "resource": "segments", "params": { "filter": "name == \"Enterprise accounts\"" } }
 api_read  { "resource": "segments", "id": "<segment id>" }
-api_read  { "resource": "cubes", "method": "meta", "params": { "filter": "name == \"hubspot_deals\"" } }
+api_read  { "resource": "cubes", "method": "meta", "params": { "filter": "name == \"crm_deals\"" } }
 api_read  { "resource": "cubes", "method": "query",
-            "body": { "query": { "dimensions": ["hubspot_deals.properties_dealstage"], "limit": 20 } } }
+            "body": { "query": { "dimensions": ["crm_deals.stage"], "limit": 20 } } }
 
 // Create (no id) / update (with id) — the record always goes under `data`
 api_write { "resource": "segments", "data": { "name": "…", "type": "DYNAMIC", "cubes": [ … ], "filter": { … } } }
@@ -70,7 +70,7 @@ Read the catalogue first, then the root's full definition:
 
 ```json
 { "resource": "cubes", "method": "meta", "params": { "fields": "name,title,description", "pageSize": 100 } }
-{ "resource": "cubes", "method": "meta", "params": { "filter": "name == \"hubspot_companies\"" } }
+{ "resource": "cubes", "method": "meta", "params": { "filter": "name == \"crm_companies\"" } }
 ```
 
 The full definition gives you the members (always written
@@ -78,15 +78,16 @@ The full definition gives you the members (always written
 `primaryKey: true`, `meta.nameDimension` when the cube declares one, and the
 cube's `joins`. Never guess a member name — they're per-organization.
 
-Prefer business-named cubes over generated plumbing (`model_stream_…___local`
-and the like) unless the user is clearly asking about one of those.
+Prefer business-named cubes over generated plumbing — helper cubes with a
+sparse or missing description and a mechanical-looking name — unless the
+user is clearly asking about one of those.
 
 ### 2. Build `cubes` — the root first, then one entry per other cube you filter on
 
 ```json
 "cubes": [
-  { "joinPath": "hubspot_companies", "primaryKeyDimension": "id", "nameDimension": "name" },
-  { "joinPath": "hubspot_companies.hubspot_deals" }
+  { "joinPath": "crm_companies", "primaryKeyDimension": "id", "nameDimension": "name" },
+  { "joinPath": "crm_companies.crm_deals" }
 ]
 ```
 
@@ -115,10 +116,10 @@ and the like) unless the user is clearly asking about one of those.
 "filter": {
   "combinationMode": "AND",
   "items": [
-    { "member": "hubspot_companies.industry", "type": "EQUAL", "value": "Software" },
+    { "member": "crm_companies.industry", "type": "EQUAL", "value": "Software" },
     { "filterType": "Group", "combinationMode": "OR", "items": [
-        { "member": "hubspot_companies.country", "type": "EQUAL", "value": "DE" },
-        { "member": "hubspot_companies.country", "type": "EQUAL", "value": "AT" } ] }
+        { "member": "crm_companies.country", "type": "EQUAL", "value": "DE" },
+        { "member": "crm_companies.country", "type": "EQUAL", "value": "AT" } ] }
   ]
 }
 ```
@@ -139,7 +140,7 @@ comes out empty. One cheap query shows what's really there:
 
 ```json
 api_read { "resource": "cubes", "method": "query",
-           "body": { "query": { "dimensions": ["stripe_subscriptions.status"], "limit": 20 } } }
+           "body": { "query": { "dimensions": ["billing_subscriptions.status"], "limit": 20 } } }
 ```
 
 Use the stored spelling, and if nothing matches the user's term, ask rather
@@ -155,9 +156,9 @@ reason. The API won't stop you.
 Rephrase the condition as a **measure** on the child cube instead, which
 aggregates per root row:
 
-- "Organizations that have built at least 3 scoring models" →
-  `{ "member": "revos_prod_ScoringModel.count", "type": "GREATER_THAN_OR_EQUAL", "value": 3 }`
-- "Companies with any deal" → the deals cube's count `GREATER_THAN` `0`.
+- "Companies with at least 3 deals" →
+  `{ "member": "crm_deals.count", "type": "GREATER_THAN_OR_EQUAL", "value": 3 }`
+- "Companies with any deal" → `crm_deals.count` `GREATER_THAN` `0`.
 
 If the child cube has no measure that expresses the condition (e.g. "has a
 deal in stage *won*" and there's no count-of-won-deals measure), don't write
@@ -220,7 +221,7 @@ condition you left out is gone.
 
    ```json
    api_read { "resource": "cubes", "method": "query",
-              "body": { "query": { "dimensions": ["revos_prod_Organization.pricingPlan"], "limit": 20 } } }
+              "body": { "query": { "dimensions": ["crm_companies.plan"], "limit": 20 } } }
    ```
 
    Use the stored spelling. If no stored value matches what the user said,

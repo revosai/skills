@@ -84,17 +84,17 @@ Any of several values (OR group inside the root AND):
 ```json
 { "combinationMode": "AND", "items": [
   { "filterType": "Group", "combinationMode": "OR", "items": [
-    { "member": "hubspot_deals.properties_dealstage", "type": "EQUAL", "value": "appointmentscheduled" },
-    { "member": "hubspot_deals.properties_dealstage", "type": "EQUAL", "value": "qualifiedtobuy" } ] },
-  { "member": "hubspot_deals.properties_amount", "type": "GREATER_THAN", "value": 50000 } ] }
+    { "member": "crm_deals.stage", "type": "EQUAL", "value": "discovery" },
+    { "member": "crm_deals.stage", "type": "EQUAL", "value": "proposal" } ] },
+  { "member": "crm_deals.amount", "type": "GREATER_THAN", "value": 50000 } ] }
 ```
 
 Presence and booleans (no `value`):
 
 ```json
 { "combinationMode": "AND", "items": [
-  { "member": "hubspot_companies.domain", "type": "NOT_EMPTY" },
-  { "member": "hubspot_companies.is_customer", "type": "CHECKED" } ] }
+  { "member": "crm_companies.domain", "type": "NOT_EMPTY" },
+  { "member": "crm_companies.is_customer", "type": "CHECKED" } ] }
 ```
 
 A measure on a child cube the root has many of — the fan-out-safe way to say
@@ -102,5 +102,5 @@ A measure on a child cube the root has many of — the fan-out-safe way to say
 
 ```json
 { "combinationMode": "AND", "items": [
-  { "member": "revos_prod_ScoringModel.count", "type": "GREATER_THAN_OR_EQUAL", "value": 3 } ] }
+  { "member": "crm_deals.count", "type": "GREATER_THAN_OR_EQUAL", "value": 3 } ] }
 ```

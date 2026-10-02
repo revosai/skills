@@ -5,16 +5,16 @@
       "id": 1,
       "eval_name": "multi-cube-create",
       "prompt": "Can you save a segment called \"[skill-eval] Enterprise with active Stripe\" — our organizations on the ENTERPRISE plan that also have an active Stripe subscription?",
-      "expected_output": "A DYNAMIC segment rooted on the organization cube (primaryKeyDimension set), with a second cubes entry joining the Stripe subscriptions cube via a dotted path from the root, and an AND filter of pricingPlan EQUAL ENTERPRISE plus subscription status EQUAL active, using real member names from cubes meta. The reply explains the root, conditions, type and that it is PENDING until evaluated.",
+      "expected_output": "A DYNAMIC segment rooted on the organizations cube (primaryKeyDimension set), with a second cubes entry for the subscriptions cube as a dotted join path from the root, and an AND filter of plan = ENTERPRISE and subscription status = active, using member names and stored values read from the org's own cubes. The reply explains the root, conditions, type, and that it is PENDING until evaluated.",
       "files": [],
       "expectations": [
         "Created exactly one segment (one api_write without id on resource segments)",
         "type is DYNAMIC",
-        "cubes[0].joinPath is revos_prod_Organization with primaryKeyDimension set to id",
-        "cubes includes a dotted joinPath from the organization root to stripe_subscriptions (e.g. revos_prod_Organization.stripe_subscriptions)",
-        "filter ANDs revos_prod_Organization.pricingPlan EQUAL ENTERPRISE with stripe_subscriptions.status EQUAL active",
+        "cubes[0] is the organizations cube, with primaryKeyDimension set to its primary-key dimension",
+        "cubes includes a dotted joinPath from the organizations root to the subscriptions cube",
+        "filter ANDs plan EQUAL ENTERPRISE with subscription status EQUAL active, using the stored spellings",
         "Reply tells the user the segment is PENDING until evaluated",
-        "Checked stored values with a cubes query on pricingPlan and/or stripe_subscriptions.status before the first write",
+        "Checked stored values with a cubes query on the plan and/or subscription-status dimension before the first write",
         "Read the segment back by id after the last write"
       ]
     },
@@ -22,14 +22,14 @@
       "id": 2,
       "eval_name": "fan-out-measure",
       "prompt": "make a segment \"[skill-eval] Power builders\" of the orgs that have built at least 3 scoring models",
-      "expected_output": "Recognises that the organization root has many scoring models, so expresses the condition as the scoring-model count measure GREATER_THAN_OR_EQUAL 3 (not a fanning dimension condition), with the scoring-model cube in cubes via a dotted join path from the organization root. DYNAMIC.",
+      "expected_output": "Recognises that an organization has many scoring models, so expresses the condition as the scoring-model cube's count measure >= 3 (not a dimension condition on that cube, and not a list of specific org ids), with the scoring-model cube in cubes via a dotted join path from the organizations root. DYNAMIC.",
       "files": [],
       "expectations": [
         "Created exactly one segment (one api_write without id on resource segments)",
         "type is DYNAMIC",
-        "Condition uses the measure revos_prod_ScoringModel.count with GREATER_THAN_OR_EQUAL and value 3 (no dimension condition on revos_prod_ScoringModel)",
-        "cubes includes a dotted joinPath from revos_prod_Organization to revos_prod_ScoringModel",
-        "cubes[0] is revos_prod_Organization (members are organizations)",
+        "The only condition on the scoring-model cube is its count measure, GREATER_THAN_OR_EQUAL 3 (no dimension condition on that cube, no hardcoded org ids)",
+        "cubes includes a dotted joinPath from the organizations root to the scoring-model cube",
+        "cubes[0] is the organizations cube (members are organizations)",
         "Read the segment back by id after the last write"
       ]
     },
@@ -37,15 +37,15 @@
       "id": 3,
       "eval_name": "edit-preserves-filter",
       "prompt": "Update the \"[skill-eval] Growth orgs\" segment so it includes orgs on the STARTUP plan too, not just GROWTH.",
-      "expected_output": "Reads the segment first, then updates it with a filter where pricingPlan is GROWTH OR STARTUP (an OR group or OR root — there is no multi-value IN), keeping the existing condition, without sending `type` and without changing the root cube.",
+      "expected_output": "Reads the segment, checks how STARTUP is stored, then updates it with a filter where plan is GROWTH OR STARTUP (an OR group — there is no multi-value IN), keeping the existing condition, without sending `type` and without changing the root cube.",
       "files": [],
       "expectations": [
         "Read the segment (api_read by id or by name) before writing",
         "Updated the existing segment by id rather than creating a new one",
         "Update body does not include `type`",
-        "Final filter matches pricingPlan GROWTH OR STARTUP (both values present, combined with OR)",
-        "Root cube (cubes[0].joinPath) is still revos_prod_Organization after the edit",
-        "Checked stored pricingPlan values with a cubes query before writing",
+        "Final filter matches plan GROWTH OR STARTUP (both values present, combined with OR)",
+        "Root cube (cubes[0].joinPath) is unchanged after the edit",
+        "Checked stored plan values with a cubes query before writing",
         "Read the segment back by id after the last write"
       ]
     }
