@@ -44,7 +44,8 @@ Don't re-run unchanged when the run's `error.isUnrecoverable` is `true`, or
 when the cause was a missing or wrong value that nobody has fixed yet — it
 fails the same way. A value fixed in the source system reaches RevOS only
 with that source's next sync, so a re-run straight after the fix can still
-see the old value.
+see the old value — to pull the source first and then run, follow
+[sync-now.md](sync-now.md).
 
 ## What comes back, and following it
 
