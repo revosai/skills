@@ -1,0 +1,74 @@
+{
+  "skill_name": "tables",
+  "_note": "Run these against an offline sandbox that compiles the model like Cube, or against a sandbox org. A wrong column path or stream breaks the whole org's semantic model, so never run them against production. Fixture: the cubes crm_companies, crm_deals (count and total_amount measures), and crm_contacts; deals and contacts join many_to_one to companies. Table Companies is rooted on crm_companies with columns id (hidden), name, industry, country, and crm_deals_count (a measure); country is a scoring feature. Table Deals is rooted on crm_deals with columns id (hidden), name, stage, amount, and next_step (stored). Segment 'Stalled deals' is DYNAMIC and READY, rooted on crm_deals.",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "create-table",
+      "prompt": "Make a table of our contacts with their email, first and last name.",
+      "expected_output": "Creates a table with the name only, then one update with the root stream crm_contacts (no joinPath). Columns: an external id on the primary key, plus email, first_name, and last_name, all read from crm_contacts. Verifies with meta and a view query.",
+      "files": [],
+      "expectations": [
+        "Exactly one new table exists, created with a name-only body",
+        "Its only stream is crm_contacts, with no joinPath",
+        "It has an external id column on crm_contacts.id",
+        "It has external email, first_name and last_name columns reading crm_contacts",
+        "The org's model compiles at the end",
+        "Called meta or queried the new table's view after the last write"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "table-from-segment",
+      "prompt": "Create a table of the stalled deals.",
+      "expected_output": "Finds the existing 'Stalled deals' segment, creates a table rooted on crm_deals with id (hidden) and name columns, and sets the default view's segmentId to that segment. Doesn't create a new segment or filter.",
+      "files": [],
+      "expectations": [
+        "Exactly one new table exists, rooted on crm_deals with an external id column",
+        "The new table's default view has segmentId = the Stalled deals segment",
+        "No ad-hoc filter on the new table's views",
+        "The org's model compiles at the end"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "add-related-column",
+      "prompt": "Add the company's industry to the Deals table.",
+      "expected_output": "Reads the Deals table and keeps all 5 columns with their ids. Adds a crm_companies stream (joinPath crm_deals.crm_companies, or none since that is the default) and an external industry column reading crm_companies.industry. The root stays crm_deals.",
+      "files": [],
+      "expectations": [
+        "All 5 original Deals columns are still there with their original ids",
+        "Deals has a new external column with streamId crm_companies and path industry",
+        "crm_companies is a stream of Deals, and crm_deals is still the first stream",
+        "The org's model compiles at the end",
+        "Called meta or queried the Deals view after the last write"
+      ]
+    },
+    {
+      "id": 4,
+      "eval_name": "fan-out-stage",
+      "prompt": "Add the deal stage to the Companies table.",
+      "expected_output": "Recognises that a company has many deals, so a deal-stage dimension column would repeat rows. Doesn't add a non-measure column reading crm_deals, explains why, and offers alternatives: a measure such as a count per stage, or the Deals table.",
+      "files": [],
+      "expectations": [
+        "Companies has no non-measure external column reading crm_deals at the end",
+        "All 5 original Companies columns are still there with their original ids",
+        "The org's model compiles at the end",
+        "Reply explains that a company has many deals (one-to-many or fan-out)"
+      ]
+    },
+    {
+      "id": 5,
+      "eval_name": "remove-scored-column",
+      "prompt": "Remove the country column from the Companies table.",
+      "expected_output": "Reads the table and sees that country feeds the score (scoringFeatures has columnId col4). Doesn't remove it, explains why, and points the user to the RevOS UI's column delete.",
+      "files": [],
+      "expectations": [
+        "The country column (id col4) is still on Companies at the end, and the agent didn't try to remove it",
+        "The org's model compiles at the end",
+        "Reply says the column is used for scoring",
+        "Reply points the user to the RevOS UI"
+      ]
+    }
+  ]
+}
