@@ -12,48 +12,27 @@ This is not diagnosis. If the question is _why_ it failed, that is
 SKILL.md's flow. Here the user wants it done, whether or not anything is
 broken.
 
-## 1. Pin down the record and its action column
+## 1. The record and its source system
 
 **The record id** is what the user gave, or the last path segment of the
 link they pasted (a HubSpot deal link ends in `/record/0-3/<id>`). It is the
 row's `objectId`.
 
-**The action column** is the one this record has already run through. Its
-runs say which:
-
-```json
-api_read { "resource": "action-runs",
-           "params": { "filter": "objectId == \"<record id>\"",
-                       "orderBy": "createdAt desc", "pageSize": 5,
-                       "fields": "id,actionId,columnId,modelId,objectName,status,createdAt" } }
-```
-
-`modelId` and `columnId` of the newest run are the table and the action
-column to run. If the runs span more than one column, name them and ask
-which one the user means, unless the request already says ("to NetSuite").
-
-No runs at all means the record has never run. Find the tables whose first
-stream is this kind of record and which have a column of type `action`
-(`api_read` on `tables`). If more than one could apply, ask the user which
-table — a link to it is enough. Organizations split one record type across
-several tables by rules of their own; don't guess between them.
+**The source system** is the one the link or the user's words name:
+HubSpot, Salesforce, Pipedrive. Ask only if neither says.
 
 ## 2. Sync the source
-
-Read the table (`api_read` on `tables`, the run's `modelId`). Its first
-stream's `id` is the cube its rows come from — `hubspot_deals`. A connection
-writes cubes named `<prefix><stream>`, so the connections of that source
-system are the ones whose `prefix` starts that name:
 
 ```json
 api_read { "resource": "connections", "params": { "fields": "id,name,status,prefix" } }
 ```
 
-Sync **every active connection with that prefix**, not only the obviously
-named one. A record's own fields and its associations — which company a
-deal belongs to — often arrive through separate connections, and syncing
-one of them leaves the record pointing at an association the warehouse
-hasn't caught up on.
+Sync **every active connection of that system** — the ones whose `prefix`
+or `name` carries its name (`hubspot_`, "HubSpot", "Hubspot Associations").
+Not only the obviously named one: a record's own fields and its
+associations — which company a deal belongs to — often arrive through
+separate connections, and syncing one of them leaves the record pointing at
+an association the warehouse hasn't caught up on.
 
 ```json
 api_write { "resource": "connections", "id": "<connection id>", "method": "sync" }
@@ -68,14 +47,49 @@ Read what comes back:
 - **409** — the connection isn't active. Nothing runs. Say so and leave it;
   activating a connection is not part of this.
 
-Before moving on, take each connection's usual duration from this same
-answer: `lastSucceededAt` minus `lastSyncStartedAt`, when `lastSyncStatus`
-is `"succeeded"`. Once your run finishes, those fields describe it instead.
+Take each connection's usual duration from this same answer:
+`lastSucceededAt` minus `lastSyncStartedAt`, when `lastSyncStatus` is
+`"succeeded"`. Once your run finishes, those fields describe it instead.
 
-If no connection has a matching prefix, don't pick one by its name. Say you
-can't tell which connection feeds this table, list the active ones, and ask.
+If no active connection matches the system, don't pick one by guess. List
+the active ones and ask.
 
-## 3. Wait for it
+## 3. Find the action column while the sync runs
+
+**The record has run before** — its runs name the table and the column:
+
+```json
+api_read { "resource": "action-runs",
+           "params": { "filter": "objectId == \"<record id>\"",
+                       "orderBy": "createdAt desc", "pageSize": 5,
+                       "fields": "id,actionId,columnId,modelId,objectName,status,createdAt" } }
+```
+
+`modelId` and `columnId` of the newest run are what to run. If the runs
+span more than one column, name them and ask which one the user means,
+unless the request already says ("to NetSuite").
+
+**The record has no runs** — a new record, or one that was never in scope.
+Then the table has to be found from the other side:
+
+```json
+api_read { "resource": "tables", "params": { "fields": "id,name,streams", "pageSize": 100 } }
+```
+
+Keep the tables whose **first** stream is this record type's cube (for a
+HubSpot deal, `hubspot_deals`), read each, and keep those with a column of
+type `action`.
+
+- One table, one action column: that is the one.
+- Several: don't choose. Name the candidates — table and column — and ask.
+  Organizations split one record type across tables by rules of their own
+  (a pipeline, a region, a test copy), and those rules are not in the API.
+- None: say there is no action set up for this kind of record.
+
+Whether the record is actually a row of the table you settled on, the run
+itself will tell you (step 5).
+
+## 4. Wait for the sync
 
 ```json
 api_read { "resource": "connections", "id": "<connection id>", "method": "syncStatus" }
@@ -98,11 +112,11 @@ takes. Then pace yourself:
   usually takes and that they should ask you to check again. Don't poll in
   a loop — checks with no time between them all see the same answer.
 
-## 4. Run the action for that one row
+## 5. Run the action for that one row
 
 ```json
 api_write { "resource": "action-runs",
-            "data": { "tableId": "<modelId>", "columnId": "<columnId>",
+            "data": { "tableId": "<table id>", "columnId": "<action column id>",
                       "objectIds": ["<record id>"] } }
 ```
 

@@ -1,6 +1,6 @@
 {
   "skill_name": "actions",
-  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` has an empty value under `col_owner_email`. The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For eval 7: the Deals table's first stream is `crm_deals`; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`.",
+  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` has an empty value under `col_owner_email`. The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7 and 8: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs.",
   "evals": [
     {
       "id": 1,
@@ -87,16 +87,30 @@
       "id": 7,
       "eval_name": "sync-record-now",
       "prompt": "I've just fixed the owner on the Globex expansion deal in the CRM. Sync that deal now: <a link to the record ending in its id>.",
-      "expected_output": "Takes the record id from the link, finds the deal's action column from its existing runs, syncs both active `crm_` connections (not the inactive one, not the `erp_` one), waits until neither is running and both report a succeeded sync, then starts the action for that one record with objectIds and reports how the run ended. Nothing is run before the syncs finish.",
+      "expected_output": "Takes the record id from the link and the source system from it too, syncs both active `crm_` connections (not the inactive one, not the `erp_` one), finds the deal's action column from its existing runs, waits until neither connection is running and both report a succeeded sync, then starts the action for that one record with objectIds and reports how the run ended. Nothing is run before the syncs finish.",
       "files": [],
       "expectations": [
-        "Listed action-runs filtered by objectId equal to the id from the link",
         "Called api_write on connections with method sync for each of the two active `crm_` connections",
         "Did not sync the inactive connection or the `erp_` connection",
+        "Listed action-runs filtered by objectId equal to the id from the link",
         "Read syncStatus and did not start the action while a connection was still running",
         "The only api_write on action-runs has objectIds with exactly that one record id",
         "The api_write on action-runs comes after the connection syncs",
         "Reply names the connections synced and the outcome of the run"
+      ]
+    },
+    {
+      "id": 8,
+      "eval_name": "sync-record-never-run",
+      "prompt": "Sync the Initech pilot deal now: <a link to the record ending in its id>.",
+      "expected_output": "Syncs the active `crm_` connections, finds no action runs for the record, lists the tables whose first stream is `crm_deals` and finds two with an action column. Doesn't pick one: names both candidates (table and action column) and asks which to run. No action run is started.",
+      "files": [],
+      "expectations": [
+        "Listed action-runs filtered by objectId and found none",
+        "Read tables to find those whose first stream is `crm_deals`",
+        "Reply names both candidate tables and their action columns",
+        "Reply asks the user which one to run",
+        "No api_write on action-runs"
       ]
     }
   ]
