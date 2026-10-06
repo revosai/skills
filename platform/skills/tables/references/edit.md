@@ -39,8 +39,9 @@ For example: "add the company's industry to the deals table".
 2. Find the path from the root to that cube through declared joins
    (columns.md, *Streams*). Ask if there are two.
 3. If the cube isn't in `streams` yet, append a stream: its `id` is the
-   cube name, plus `connectionId`, `streamName`, and a `joinPath` when the
-   path isn't `<root>.<cube>`. Send the full `streams` array.
+   cube name, and its `joinPath` the path you found
+   (`{ "id": "crm_companies", "joinPath": "crm_deals.crm_companies" }`).
+   Send the full `streams` array, and keep the root first.
 4. Append the column with `streamId` set to that cube.
 
 ## Change a column

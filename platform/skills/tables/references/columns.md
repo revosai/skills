@@ -54,8 +54,12 @@ JSON schema. This page covers what it can't show.
 
 Leave `external` out (or `false`) and leave out `streamId` and `path`.
 Values are typed in the UI or written by actions. A stored column needs no
-stream. Never send a `__local` stream or `streamId: "__local"`; both are
-obsolete and dropped.
+stream: RevOS keeps the table's stored columns (and its scores) in a cube of
+the table's own, `model_stream_<table id, - → _>___local`, which exists only
+while the table has one of them. Never name a table's own cube in its own
+`streams` (another table's own cube is fine; see *Streams*), and never send
+a `__local` stream or `streamId: "__local"`; both are obsolete and
+dropped.
 
 ## Action columns
 
@@ -82,24 +86,27 @@ obsolete and dropped.
 
 ```json
 "streams": [
-  { "id": "crm_deals", "connectionId": "<conn id>", "streamName": "deals" },
-  { "id": "crm_companies", "connectionId": "<conn id>", "streamName": "companies", "joinPath": "crm_deals.crm_companies" }
+  { "id": "crm_deals" },
+  { "id": "crm_companies", "joinPath": "crm_deals.crm_companies" }
 ]
 ```
 
+A stream is `id` and `joinPath`, nothing else. Older tables and docs carry
+`connectionId` and `streamName` on it; they're dropped on write, so don't
+send them. The cube says where its data comes from, not the table.
+
 - **`id`** is the **cube name**. Schema generation builds the view's join
   paths from it, so an id that isn't a real cube breaks the org's model.
-- **`connectionId`** and **`streamName`** describe where the cube's data
-  comes from. Take them from the cube's definition, `meta.abConnectionId`
-  and `meta.abStreamName` (`api_read` the stored cube). If those are
-  missing, use the cube name for both, as the RevOS UI does.
 - **The first stream is the root.** Every other stream is reached from it.
   Never give the root a `joinPath`, because it is dropped. Don't reorder
   streams: that changes what a row is.
 - **`joinPath`**: the dotted path of cube names from the root to this
   stream, one hop per declared join (`crm_deals.crm_companies`, or
-  `crm_contacts.crm_companies.crm_regions`). Leave it out only when the path
-  is simply `<root id>.<stream id>`.
+  `crm_contacts.crm_companies.crm_regions`). Always send it on a non-root
+  stream. One sent without it is stored as `<root id>.<stream id>` (or
+  `model_stream_<table id, - → _>___local.<stream id>` when the table keeps
+  its own rows, see below), which is wrong whenever the cube isn't joined
+  straight onto that.
   - Check every hop against the cubes' `joins`. A join can be declared on
     either side of the pair, so look at both cubes before concluding there
     is none.
@@ -112,6 +119,11 @@ obsolete and dropped.
   each company has many deals. From a "many" cube, add only measures.
 - A stream may be written before its columns, and stays until a column
   that read it is removed.
+- **Another table's columns.** A stream may be another table's own cube,
+  `model_stream_<other table id, - → _>___local`, to read that table's
+  stored columns or `scores`. It's in `meta` only while that table holds
+  something, and joins like any cube: check its `joins`, and the fan-out
+  rule, as above.
 
 ## The `id` column every table has
 
@@ -119,8 +131,12 @@ obsolete and dropped.
 { "name": "id", "type": "string", "external": true, "streamId": "<root cube>", "path": "<root's primary-key dimension>", "hidden": true }
 ```
 
-Rows are identified by it. Set `hidden: true` when the table also has a
-`name` column. That column is
+Rows are identified by it, and an external `id` is what makes the first
+stream the root. (A table whose `id` column is stored keeps its own rows
+instead: its streams hang off its own cube, and their paths start with
+`model_stream_…___local`. Never flip the `id` column's `external`: that
+moves the root, and every path with it.) Set `hidden: true` when the
+table also has a `name` column. That column is
 `{ "name": "name", "displayName": "Name", "type": "string", "external": true, "streamId": "<root>", "path": "<name dimension>" }`.
 For the name dimension, use the cube's `meta.nameDimension`, or else a
 dimension called `name`.

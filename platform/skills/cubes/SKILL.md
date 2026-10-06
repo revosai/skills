@@ -87,7 +87,8 @@ apply. If the user mentions a repo or the CLI, point them there instead.
   - It is compiled. Members are fully qualified, such as `crm_deals.amount`,
     and use camelCase keys.
   - It adds the cubes RevOS generates itself, which you never write:
-    - a cube per table, named `model_stream_…___local`;
+    - a cube per table that has stored columns or scores, named
+      `model_stream_…___local` (a table that only reads cubes has none);
     - a cube per static segment, named `segment_…`;
     - a view per table.
 

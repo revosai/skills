@@ -12,15 +12,14 @@ catalogue:
 api_read { "resource": "cubes", "method": "meta", "params": { "fields": "name,title,description", "pageSize": 100 } }
 ```
 
-Then read the root's full definition, both compiled and stored:
+Then read the root's compiled definition, `meta` filtered to the cube
+(`"filter": "name == \"crm_companies\""`). It gives the member names and
+types, the dimension with `primaryKey: true`, and `meta.nameDimension` when
+the cube declares one. Note the primary key and the name dimension.
 
-- `meta` filtered to the cube gives the member names and types.
-- `get` on the stored cube gives `meta.abConnectionId`, `abStreamName`,
-  and `nameDimension`.
-
-From those, note the root's primary-key dimension and its name dimension.
-Prefer business-named cubes over generated ones (`model_…`, `segment_…`).
-Ask when the user's words fit two cubes.
+Root a table on the org's own cubes. Skip the system ones: tables' views
+(`model_<id>`), tables' own cubes (`model_stream_…___local`), and static
+segments' cubes (`segment_…`). Ask when the user's words fit two cubes.
 
 **If the table should hold only some rows** ("the stalled deals"), the rows
 are scoped by a segment, not by the table:
@@ -32,8 +31,7 @@ are scoped by a segment, not by the table:
 ## 2. Check for a namesake
 
 `api_read { "resource": "tables", "params": { "filter": "name == \"…\"", "fields": "id,name" } }`.
-Tables can't be deleted from here, so a duplicate is clutter the user has
-to remove in the UI.
+If one exists, ask whether they mean that table before making a second.
 
 ## 3. Create it with the name only
 
@@ -44,7 +42,9 @@ api_write { "resource": "tables", "data": { "name": "Companies" } }
 The create body takes **only** `name`, which is trimmed and must be 1–255
 characters. Anything else is rejected. Take the `id` from the response. The
 table now exists, with a default view and no columns. Tell the user up
-front that building it takes several writes.
+front that building it takes several writes. If a later step fails, the
+table stays half-built: fix it, or tell the user. Don't delete it to tidy
+up without asking (SKILL.md, *Deleting*).
 
 ## 4. Add the root stream and the columns
 
@@ -57,7 +57,7 @@ One update carries `streams` with the root, and `objectsColumns`:
 
 ```json
 api_write { "resource": "tables", "id": "<table id>", "data": {
-  "streams": [ { "id": "crm_companies", "connectionId": "<abConnectionId>", "streamName": "companies" } ],
+  "streams": [ { "id": "crm_companies" } ],
   "objectsColumns": [
     { "name": "id", "type": "string", "external": true, "streamId": "crm_companies", "path": "id", "hidden": true },
     { "name": "name", "displayName": "Name", "type": "string", "external": true, "streamId": "crm_companies", "path": "name" },
