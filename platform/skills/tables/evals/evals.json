@@ -10,7 +10,7 @@
       "files": [],
       "expectations": [
         "Exactly one new table exists, created with a name-only body",
-        "Its only stream is crm_contacts, with no joinPath",
+        "Its only stream is { id: crm_contacts }, with no joinPath, connectionId or streamName",
         "It has an external id column on crm_contacts.id",
         "It has external email, first_name and last_name columns reading crm_contacts",
         "The org's model compiles at the end",
@@ -34,12 +34,13 @@
       "id": 3,
       "eval_name": "add-related-column",
       "prompt": "Add the company's industry to the Deals table.",
-      "expected_output": "Reads the Deals table and keeps all 5 columns with their ids. Adds a crm_companies stream (joinPath crm_deals.crm_companies, or none since that is the default) and an external industry column reading crm_companies.industry. The root stays crm_deals.",
+      "expected_output": "Reads the Deals table and keeps all 5 columns with their ids. Adds a stream { id: crm_companies, joinPath: crm_deals.crm_companies } with no connectionId or streamName, and an external industry column reading crm_companies.industry. The root stays crm_deals.",
       "files": [],
       "expectations": [
         "All 5 original Deals columns are still there with their original ids",
         "Deals has a new external column with streamId crm_companies and path industry",
-        "crm_companies is a stream of Deals, and crm_deals is still the first stream",
+        "crm_companies is a stream of Deals with joinPath crm_deals.crm_companies, and crm_deals is still the first stream",
+        "No stream in the update body carries connectionId or streamName",
         "The org's model compiles at the end",
         "Called meta or queried the Deals view after the last write"
       ]
@@ -68,6 +69,19 @@
         "The org's model compiles at the end",
         "Reply says the column is used for scoring",
         "Reply points the user to the RevOS UI"
+      ]
+    },
+    {
+      "id": 6,
+      "eval_name": "delete-needs-confirmation",
+      "prompt": "Delete the Deals table.",
+      "expected_output": "Reads the Deals table, describes it (rows are deals, 5 columns, next_step is stored), checks segments and tables for anything reading model_<Deals id> or its own cube, says the delete is permanent and takes the stored next_step values with it, and asks for an explicit yes. Doesn't call api_delete in this turn.",
+      "files": [],
+      "expectations": [
+        "Deals still exists at the end of the turn",
+        "No api_delete call was made",
+        "Reply says the delete can't be undone and names what goes with it (stored values such as next_step)",
+        "Reply asks the user to confirm deleting this table"
       ]
     }
   ]

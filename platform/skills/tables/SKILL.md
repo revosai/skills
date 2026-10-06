@@ -1,16 +1,16 @@
 ---
 name: tables
 description: >
-  Create, read, and edit RevOS tables (scoring models), and scope their rows
-  with a segment, through the RevOS MCP server. A table's rows come from a
-  cube, and its columns are read from cubes, stored in RevOS, or filled by
-  actions. Use this whenever the user wants a table or list in RevOS ("make
-  a table of our companies", "a table of the stalled deals"), wants to add,
-  change, rename, hide, or remove a column, pull a field from a related
-  object into a table ("add the company's industry to the deals table"), add
-  an action column, see how a table is built, or delete a table, even if
-  they never say the word "table". Read it before the first api_write on the
-  `tables` or `table-views` resource.
+  Create, read, edit, and delete RevOS tables (scoring models), and scope
+  their rows with a segment, through the RevOS MCP server. A table's rows
+  come from a cube, and its columns are read from cubes, stored in RevOS, or
+  filled by actions. Use this whenever the user wants a table or list in
+  RevOS ("make a table of our companies", "a table of the stalled deals"),
+  wants to add, change, rename, hide, or remove a column, pull a field from
+  a related object into a table ("add the company's industry to the deals
+  table"), add an action column, see how a table is built, or delete a
+  table, even if they never say the word "table". Read it before the first api_write or
+  api_delete on the `tables` or `table-views` resource.
 ---
 
 # Tables
@@ -27,8 +27,10 @@ A table, called a scoring model in the API, is a set of **rows** with typed
   - **stored**: values kept in RevOS itself, typed in or written by actions.
     These need no stream.
   - **action**: runs an integration action per row and keeps the result.
-- **Streams** list the cubes the table reads, with how each is reached from
-  the root (`joinPath`).
+- **Streams** list the cubes the table reads: `{ "id": "<cube name>" }` for
+  the root, plus `joinPath`, the way to it from the root, for every other
+  one. A stream holds nothing else: the cube itself knows where its data
+  comes from.
 - **Views** are layouts of the table. The default view also decides which
   rows show, through an attached segment or an ad-hoc filter.
 
@@ -42,12 +44,12 @@ You reach tables through the RevOS MCP server's generic tools:
 | `api_write { "resource": "tables", "id": "<table id>", "data": { … } }` | update `name`, `objectsColumns`, `streams` |
 | `api_read { "resource": "table-views", "method": "list", "id": "<TABLE id>" }` | the table's views |
 | `api_write { "resource": "table-views", "id": "<VIEW id>", "data": { … } }` | update a view: `segmentId`, `filter`, `columns` |
+| `api_delete { "resource": "tables", "id": "<table id>" }` | delete a table, for good (see *Deleting*) |
 
 The record always goes under `data`. A body under any other key may be
 ignored without an error. `api_details({ resource: "tables", operation:
 "update" })` is the authority on the column and stream shapes. There is no
-column endpoint: columns change through the table's `objectsColumns` array,
-and tables can't be deleted from here (see *Deleting* below).
+column endpoint: columns change through the table's `objectsColumns` array.
 
 ## The three things to keep in mind
 
@@ -59,6 +61,9 @@ the array you send instead of the stored one:
 - Sending `objectsColumns` without `streams` keeps the stored streams.
 - A stream disappears by itself with the last column that read it (the root
   stays), so you rarely send `streams` except to add one.
+- The server tidies what it stores: a path on the root is dropped, and a
+  non-root stream sent without `joinPath` is stored as `<root>.<id>`. Read
+  the table back to see what it kept.
 
 **2. A table compiles into the org's semantic model.** RevOS generates a
 Cube **view** per table from its streams and external columns. The server
@@ -139,10 +144,36 @@ then attach it here.
 
 ## Deleting
 
-Tables can't be deleted through these tools, on purpose. Dropping a scoring
-model takes its stored values, scores, and action results with it. If the
-user wants a table gone, tell them to delete it in the RevOS UI. Don't call
-`api_delete` on `tables`; there is no such operation.
+`api_delete` on `tables` removes the table for good. Nothing is soft
+deleted, and there is no undo. It takes with it:
+
+- the stored column values and the action results;
+- the scores and the change history;
+- the table's views and its view in the semantic model.
+
+So never delete on an inference. Before the call:
+
+1. Read the table and name it back to the user: what a row is, how many
+   columns, which are stored or action columns, and whether it is scored.
+2. Check what reads the table's cubes. Its view is `model_<id, - → _>` and
+   its own cube, if it has stored columns or scores,
+   `model_stream_<id, - → _>___local`. List the org's segments (full
+   records: their `cubes` and `filter` aren't in `fields`) and tables
+   (`fields: "id,name,streams"`), and look for either name. Anything that reads them stops compiling with the
+   table gone, and takes the org's whole model down with it (rule 2). Report
+   what you found; that has to be fixed first.
+3. Say what goes with it (the list above), and ask for an explicit yes for
+   **this** table. Approval to delete one table doesn't cover another.
+4. Then `api_delete`, and confirm that `meta` still compiles and the table
+   is gone from the `list`. The delete drops several stores in turn and
+   isn't atomic: if it errors or times out, read the list before trying
+   again, and tell the user what state the table is in.
+
+The cubes and segments the table read stay, and so do the connected
+systems: deleting a table writes nothing back to them. A table you created
+yourself in a failed attempt is no exception: say so, and ask before
+deleting it. A `403` means the user's role can't delete tables; someone
+with a higher role in the organization has to do it.
 
 ## Reporting back
 
