@@ -56,9 +56,10 @@ Leave `external` out (or `false`) and leave out `streamId` and `path`.
 Values are typed in the UI or written by actions. A stored column needs no
 stream: RevOS keeps the table's stored columns (and its scores) in a cube of
 the table's own, `model_stream_<table id, - → _>___local`, which exists only
-while the table has one of them. Never name that cube in `streams`, and
-never send a `__local` stream or `streamId: "__local"`; both are obsolete
-and dropped.
+while the table has one of them. Never name a table's own cube in its own
+`streams` (another table's own cube is fine; see *Streams*), and never send
+a `__local` stream or `streamId: "__local"`; both are obsolete and
+dropped.
 
 ## Action columns
 
@@ -116,6 +117,11 @@ send them. The cube says where its data comes from, not the table.
   each company has many deals. From a "many" cube, add only measures.
 - A stream may be written before its columns, and stays until a column
   that read it is removed.
+- **Another table's columns.** A stream may be another table's own cube,
+  `model_stream_<other table id, - → _>___local`, to read that table's
+  stored columns or `scores`. It's in `meta` only while that table holds
+  something, and joins like any cube: check its `joins`, and the fan-out
+  rule, as above.
 
 ## The `id` column every table has
 

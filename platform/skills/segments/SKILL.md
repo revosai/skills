@@ -190,9 +190,8 @@ as dimension conditions.
 
 `name` is required (1–255 chars); add a one-line `description` of the
 audience in plain words. Before writing, check for a namesake —
-`api_read({ resource: "segments", params: { filter: "name == \"…\"" } })` —
-since segments can't be deleted from here, and a duplicate is clutter the
-user has to clean up in the UI.
+`api_read({ resource: "segments", params: { filter: "name == \"…\"" } })`.
+If one exists, ask whether they mean that segment before making a second.
 
 Then `api_write({ resource: "segments", data: { name, description, type, cubes, filter } })`.
 
@@ -276,7 +275,28 @@ show every row until it's evaluated.
 
 ## Deleting
 
-Segments can't be deleted through these tools, on purpose. If the user wants
-one gone, point them to the RevOS UI — and note that the UI will refuse while
-a table view still uses it, so detach it first (`segmentId: null`) if that's
-the case.
+`api_delete({ resource: "segments", id })` removes a segment for good, and
+for a STATIC one its snapshot of members too. There is no undo. Before the
+call:
+
+1. Read the segment and name it back: its type, root cube, conditions, and
+   member count.
+2. **Views.** The delete is refused (`409`) while any table view has the
+   segment attached. Find them: list the tables, then each table's views
+   (`table-views`, `method: "list"`, the TABLE's id), looking for this
+   `segmentId`. Tell the user which tables it scopes; detaching
+   (`segmentId: null`) makes those tables show every row. Detach only with
+   their yes.
+3. **A STATIC segment's cube.** It compiles into a cube,
+   `segment_<id, - → _>`. A table started from the segment reads that cube
+   as a stream; list the tables with `fields: "id,name,streams"` and look
+   for it. With the segment gone, such a table no longer compiles, and the
+   org's whole model goes down with it. Stop and report it.
+4. Ask for an explicit yes for **this** segment. Approval to delete one
+   doesn't cover another.
+5. `api_delete`, then check that `meta` still compiles and the segment is
+   gone from the list.
+
+A segment you created yourself in a failed attempt is no exception: say
+so, and ask before deleting it. A `403` means the user's role can't delete
+segments; someone with a higher role in the organization has to do it.

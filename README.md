@@ -34,7 +34,7 @@ registered via [`.mcp.json`](platform/.mcp.json).
 | Skill | What it does |
 |---|---|
 | [`query-semantic-model`](platform/skills/query-semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
-| [`segments`](platform/skills/segments) | Create and edit segments (saved audiences over the semantic model), scope a table's rows with one, and diagnose a FAILED or wrong-looking segment. |
+| [`segments`](platform/skills/segments) | Create, edit, and delete segments (saved audiences over the semantic model), scope a table's rows with one, and diagnose a FAILED or wrong-looking segment. |
 | [`tables`](platform/skills/tables) | Create, read, edit, and delete tables (scoring models): columns from cubes, stored and action columns, related cubes as streams, and scoping rows with a segment. Guards the org's model with a compile-and-query check after every write, and a dependency check and explicit confirmation before a delete. |
 | [`cubes`](platform/skills/cubes) | Read, create, edit, and delete the cube definitions behind the semantic model — with a dependency check before removals and a compile-and-query check (and rollback) after every write. |
 | [`actions`](platform/skills/actions) | Inspect, run, and debug actions and their runs: diagnose a failed or wrong-looking run level by level (the run, its input mapping, the lineage of a missing value), apply the organization's own error instructions for the action, re-run an action column for chosen rows, and sync one record now (pull its source, then run its action). |
