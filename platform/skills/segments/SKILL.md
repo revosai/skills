@@ -281,21 +281,33 @@ call:
 
 1. Read the segment and name it back: its type, root cube, conditions, and
    member count.
-2. **Views.** The delete is refused (`409`) while any table view has the
-   segment attached. Find them: list the tables, then each table's views
-   (`table-views`, `method: "list"`, the TABLE's id), looking for this
-   `segmentId`. Tell the user which tables it scopes; detaching
-   (`segmentId: null`) makes those tables show every row. Detach only with
-   their yes.
-3. **A STATIC segment's cube.** It compiles into a cube,
-   `segment_<id, - → _>`. A table started from the segment reads that cube
-   as a stream; list the tables with `fields: "id,name,streams"` and look
-   for it. With the segment gone, such a table no longer compiles, and the
-   org's whole model goes down with it. Stop and report it.
+2. **A STATIC segment's cube.** Check this before anything else: it's what
+   can make the delete impossible. A STATIC segment compiles into a cube,
+   `segment_<id, - → _>`. Look for that name in:
+   - the tables' `streams`, ids and `joinPath`s
+     (`fields: "id,name,streams"`): a table started from the segment is
+     rooted on its cube;
+   - the other segments' `cubes` and `filter` (full records);
+   - the stored cubes' `joins` (`api_read` on `cubes`,
+     `fields: "name,definition"`).
+
+   With the segment gone, any of these stops compiling, and the org's whole
+   model goes down with it. Stop and report what you found, and don't
+   change anything else for this delete yet.
+3. **Views.** The delete is refused (`409`) while any table view has the
+   segment attached. `usageCount` on the segment is the number of them; at
+   0, skip ahead. Otherwise find them: list the tables, then each table's
+   views (`table-views`, `method: "list"`, the TABLE's id,
+   `filter: "segmentId == \"<segment id>\""`), until you've found
+   `usageCount` of them. Tell the user which tables it scopes. Detaching
+   (`segmentId: null`) makes those tables show every row, so detach only
+   with their yes.
 4. Ask for an explicit yes for **this** segment. Approval to delete one
    doesn't cover another.
 5. `api_delete`, then check that `meta` still compiles and the segment is
-   gone from the list.
+   gone from the list. If `meta` fails, there's nothing to restore: read
+   the error, find what still names the segment's cube (the places in step
+   2), and tell the user what has to change.
 
 A segment you created yourself in a failed attempt is no exception: say
 so, and ask before deleting it. A `403` means the user's role can't delete

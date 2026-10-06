@@ -9,8 +9,8 @@ description: >
   wants to add, change, rename, hide, or remove a column, pull a field from
   a related object into a table ("add the company's industry to the deals
   table"), add an action column, see how a table is built, or delete a
-  table, even if they never say the word "table". Read it before the first api_write or
-  api_delete on the `tables` or `table-views` resource.
+  table, even if they never say the word "table". Read it before the first
+  api_write or api_delete on the `tables` or `table-views` resource.
 ---
 
 # Tables
@@ -66,8 +66,10 @@ the array you send instead of the stored one:
   the table back to see what it kept.
 
 **2. A table compiles into the org's semantic model.** RevOS generates a
-Cube **view** per table from its streams and external columns. The server
-doesn't check them on save. Any of these breaks every table, segment, and
+Cube **view** per table, `model_<id, - → _>`, from its streams and external
+columns, plus its stored columns and `scores` through the table's own cube
+(`model_stream_<id, - → _>___local`, see columns.md). The server doesn't
+check them on save. Any of these breaks every table, segment, and
 query in the org until it's fixed:
 
 - a stream `id` that isn't a cube;
@@ -149,25 +151,38 @@ deleted, and there is no undo. It takes with it:
 
 - the stored column values and the action results;
 - the scores and the change history;
-- the table's views and its view in the semantic model.
+- the table's views, its view in the semantic model, and its own cube.
 
 So never delete on an inference. Before the call:
 
 1. Read the table and name it back to the user: what a row is, how many
    columns, which are stored or action columns, and whether it is scored.
-2. Check what reads the table's cubes. Its view is `model_<id, - → _>` and
-   its own cube, if it has stored columns or scores,
-   `model_stream_<id, - → _>___local`. List the org's segments (full
-   records: their `cubes` and `filter` aren't in `fields`) and tables
-   (`fields: "id,name,streams"`), and look for either name. Anything that reads them stops compiling with the
-   table gone, and takes the org's whole model down with it (rule 2). Report
-   what you found; that has to be fixed first.
+2. Check what reads the table's cubes: its view `model_<id, - → _>` and,
+   if it has stored columns or scores, its own cube
+   `model_stream_<id, - → _>___local`. Look for either name in:
+   - the other tables' `streams`, ids and `joinPath`s
+     (`fields: "id,name,streams"`);
+   - the segments' `cubes` and `filter` (list full records: neither is in
+     `fields`);
+   - the stored cubes' `joins` (`api_read` on `cubes`,
+     `fields: "name,definition"`).
+
+   That covers views too: another table's view filter can only name a
+   member of a cube that table joins, so it shows up in its `streams`.
+   Anything you find stops compiling with the table gone, and takes the
+   org's whole model down with it (rule 2). Report it and stop: it has to
+   be changed first, with the user, through its own skill.
 3. Say what goes with it (the list above), and ask for an explicit yes for
    **this** table. Approval to delete one table doesn't cover another.
 4. Then `api_delete`, and confirm that `meta` still compiles and the table
    is gone from the `list`. The delete drops several stores in turn and
    isn't atomic: if it errors or times out, read the list before trying
    again, and tell the user what state the table is in.
+5. If `meta` fails after the delete, there's nothing to restore: the table
+   is gone. Don't try fixes at random. Read the error, which names the
+   cube or member that's missing, find what still points at it (the
+   places in step 2), and tell the user what has to change. Change it
+   only with their yes.
 
 The cubes and segments the table read stay, and so do the connected
 systems: deleting a table writes nothing back to them. A table you created

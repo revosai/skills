@@ -103,8 +103,10 @@ send them. The cube says where its data comes from, not the table.
 - **`joinPath`**: the dotted path of cube names from the root to this
   stream, one hop per declared join (`crm_deals.crm_companies`, or
   `crm_contacts.crm_companies.crm_regions`). Always send it on a non-root
-  stream. One sent without it is stored as `<root id>.<stream id>`, which
-  is wrong whenever the cube isn't joined straight onto the root.
+  stream. One sent without it is stored as `<root id>.<stream id>` (or
+  `model_stream_<table id, - → _>___local.<stream id>` when the table keeps
+  its own rows, see below), which is wrong whenever the cube isn't joined
+  straight onto that.
   - Check every hop against the cubes' `joins`. A join can be declared on
     either side of the pair, so look at both cubes before concluding there
     is none.
@@ -133,9 +135,8 @@ Rows are identified by it, and an external `id` is what makes the first
 stream the root. (A table whose `id` column is stored keeps its own rows
 instead: its streams hang off its own cube, and their paths start with
 `model_stream_…___local`. Never flip the `id` column's `external`: that
-moves the root, and every path with it.)
-Set `hidden: true` when the table also has a
-`name` column. That column is
+moves the root, and every path with it.) Set `hidden: true` when the
+table also has a `name` column. That column is
 `{ "name": "name", "displayName": "Name", "type": "string", "external": true, "streamId": "<root>", "path": "<name dimension>" }`.
 For the name dimension, use the cube's `meta.nameDimension`, or else a
 dimension called `name`.
