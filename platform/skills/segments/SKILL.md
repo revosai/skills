@@ -302,9 +302,14 @@ call:
    `usageCount` of them. Tell the user which tables it scopes. Detaching
    (`segmentId: null`) makes those tables show every row, so detach only
    with their yes.
-4. Ask for an explicit yes for **this** segment. Approval to delete one
+4. **Dashboard cards.** Not counted in `usageCount` and not a reason for a
+   `409`: a card keeps its `segmentId` after the segment is gone, and the
+   dashboard shows it as unavailable. Find them with
+   `api_read { "resource": "dashboard-cards", "params": { "filter": "segmentId == \"<segment id>\"" } }`
+   and tell the user which dashboards lose which cards.
+5. Ask for an explicit yes for **this** segment. Approval to delete one
    doesn't cover another.
-5. `api_delete`, then check that `meta` still compiles and the segment is
+6. `api_delete`, then check that `meta` still compiles and the segment is
    gone from the list. If `meta` fails, there's nothing to restore: read
    the error, find what still names the segment's cube (the places in step
    2), and tell the user what has to change.

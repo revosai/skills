@@ -114,9 +114,15 @@ reference to the old name or member breaks:
     dimension.
 - **Segments**: list them, then `get` each by id. Each has
   `cubes[].joinPath` and the `member`s in its `filter`.
+- **Dashboard cards**: list them with
+  `api_read { "resource": "dashboard-cards", "params": { "fields": "id,dashboardId,title,measure,breakdown,filter,joinPaths", "pageSize": 200 } }`.
+  Each names members in `measure`, `breakdown` and its `filter`, and cubes
+  in `joinPaths`. Cards aren't checked when the model changes: a broken one
+  doesn't stop the model compiling, it just shows as unavailable on the
+  dashboard — still worth telling the user.
 
 Report what you found to the user before acting: "crm_deals is used by the
-Deals table (7 columns) and 2 segments".
+Deals table (7 columns), 2 segments and 3 dashboard cards".
 
 ## Creating, editing, deleting
 

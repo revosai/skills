@@ -25,6 +25,10 @@ act on what you find:
   delete** without the user's decision. Those segments fail on their next
   evaluation, and a table scoped by one can break too. The user should
   change or remove those segments first.
+- **Dashboard cards** whose measure, breakdown, conditions or `joinPaths`
+  name it. The model still compiles, but those cards show as unavailable.
+  Tell the user which dashboards lose what; removing or repointing the cards
+  is their call (the metrics skill covers it).
 - **Other cubes** joining to it or referencing `${cube.…}`. Remove those
   joins and references first: edit each such cube with the full-definition
   update in edit.md, and verify that `meta` compiles. Only then delete.

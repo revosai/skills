@@ -1,0 +1,61 @@
+{
+  "skill_name": "metrics",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "read-dashboard-values",
+      "prompt": "What's on our first dashboard, and what do its cards show right now?",
+      "expected_output": "Lists the dashboards, picks the oldest one, lists its cards with filter dashboardId == \"<id>\", and computes each card's value with a cubes query built the way the app builds it (measure, the segment's or the card's own conditions as Cube filters, joinHints from joinPaths). Reports each value with the scope it is counted over.",
+      "files": [],
+      "expectations": [
+        "Listed cards with api_read on dashboard-cards and a dashboardId filter, not under the dashboards resource",
+        "Computed each card's value with api_read on cubes, method query, body.query",
+        "Each query has the card's measure as its only measure",
+        "For a card with a segmentId, read the segment and used its conditions (dynamic) or the segment_<id>.id set filter (static)",
+        "For a card with joinPaths, sent them as joinHints arrays",
+        "Reply names what each number is counted over"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "add-card-with-breakdown",
+      "prompt": "Create a dashboard called \"[skill-eval] Pipeline\" and put the total deal amount on it, broken down by deal stage, as a donut.",
+      "expected_output": "Checks for a namesake, creates the dashboard, finds a numeric deal-amount measure and a stage dimension in meta, creates one card with measure, breakdown and visualization donut, reads it back and computes its breakdown with a cubes query.",
+      "files": [],
+      "expectations": [
+        "Checked for an existing dashboard of that name before creating one",
+        "Created exactly one dashboard and one card",
+        "The card's measure is a type number measure read from meta, not guessed",
+        "breakdown is a dimension read from meta",
+        "visualization is donut",
+        "Neither segmentId nor a non-empty filter was sent",
+        "Computed the breakdown with a cubes query ordered by the measure descending"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "card-scope-segment-root",
+      "prompt": "Add a card for deal amount to the \"[skill-eval] Pipeline\" dashboard, counted only over our enterprise companies segment.",
+      "expected_output": "Reads the segment, notices whether its root cube is the deal cube. If the segment is rooted on companies, it does not attach it to a deal-measure card (the app would show it as unavailable); it explains and offers the alternatives: the card's own filter on the company fields (with a joinPaths entry), or a segment rooted on deals.",
+      "files": [],
+      "expectations": [
+        "Read the segment before writing the card",
+        "Compared the segment's cubes[0].joinPath with the measure's cube",
+        "Did not create a card whose segment is rooted on a different cube than its measure",
+        "Explained the mismatch to the user in plain words"
+      ]
+    },
+    {
+      "id": 4,
+      "eval_name": "delete-dashboard-confirm",
+      "prompt": "Delete the \"[skill-eval] Pipeline\" dashboard.",
+      "expected_output": "Reads the dashboard and lists its cards, tells the user the delete removes every card on it for the whole organization, and asks for an explicit yes before api_delete.",
+      "files": [],
+      "expectations": [
+        "Listed the dashboard's cards before deleting",
+        "Told the user how many cards the delete removes",
+        "Asked for explicit confirmation before calling api_delete"
+      ]
+    }
+  ]
+}

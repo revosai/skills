@@ -61,7 +61,8 @@ Avoid it. The name is how everything else finds the cube or member:
 
 - other cubes' joins and `${…}` references;
 - tables' streams and columns;
-- segments' join paths and filters.
+- segments' join paths and filters;
+- dashboard cards' measures, breakdowns, conditions and join paths.
 
 Some of those can't be repointed through these tools. If the user wants a
 different label, change `title`. If they truly need the new name, list

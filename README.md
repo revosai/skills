@@ -27,7 +27,7 @@ a project with `revos init`.
 ### `platform`
 
 Do in chat what you'd otherwise do in the RevOS app. Starts with querying your
-live semantic model in plain English, building tables and segments, modelling the cubes behind them, and running and debugging actions — more of the app's capabilities land here
+live semantic model in plain English, building tables, segments and metric dashboards, modelling the cubes behind them, and running and debugging actions — more of the app's capabilities land here
 over time. Connects your AI assistant to your org's RevOS data over MCP,
 registered via [`.mcp.json`](platform/.mcp.json).
 
@@ -38,6 +38,7 @@ registered via [`.mcp.json`](platform/.mcp.json).
 | [`tables`](platform/skills/tables) | Create, read, edit, and delete tables (scoring models): columns from cubes, stored and action columns, related cubes as streams, and scoping rows with a segment. Guards the org's model with a compile-and-query check after every write, and a dependency check and explicit confirmation before a delete. |
 | [`cubes`](platform/skills/cubes) | Read, create, edit, and delete the cube definitions behind the semantic model — with a dependency check before removals and a compile-and-query check (and rollback) after every write. |
 | [`actions`](platform/skills/actions) | Inspect, run, and debug actions and their runs: diagnose a failed or wrong-looking run level by level (the run, its input mapping, the lineage of a missing value), apply the organization's own error instructions for the action, re-run an action column for chosen rows, and sync one record now (pull its source, then run its action). |
+| [`metrics`](platform/skills/metrics) | Read, build, and fix the org's dashboards of metric cards: compute what each card shows with the same Cube query the app runs, add a measure scoped by a segment or the card's own conditions and optionally broken down by a dimension, reorder or move cards, and diagnose a card the app shows as unavailable. Confirms before deleting a dashboard and every card on it. |
 
 ## Install
 
