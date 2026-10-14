@@ -76,9 +76,11 @@ more columns, stop at `id` and `name`. Don't invent columns.
    then take the entry with `isDefault: true`.
 2. `api_write { "resource": "table-views", "id": "<that VIEW's id>", "data": { "segmentId": "<segment id>" } }`.
 
-The segment's root cube must be the table's root cube. A view holds a
-segment or its own `filter`, never both. A STATIC segment that isn't
-`READY` scopes nothing yet, so warn the user.
+The segment's root cube must be the table's root cube — the server doesn't
+check this. An attached segment overrides the view's own `filter`, which is
+kept and comes back if the segment is detached; send `"filter": {}` with
+`segmentId` when the view has one. A STATIC segment that isn't `READY`
+scopes nothing yet, so warn the user.
 
 ## 6. Verify and report
 
@@ -86,7 +88,7 @@ Run the verify loop from SKILL.md:
 
 - `meta` compiles;
 - a 3-row query on the view (`model_<table id, - → _>`) over the new
-  columns succeeds;
+  columns succeeds (measure columns under `measures`);
 - reading the table back shows the columns and the stream you meant.
 
 Then tell the user:

@@ -56,7 +56,9 @@ Leave `external` out (or `false`) and leave out `streamId` and `path`.
 Values are typed in the UI or written by actions. A stored column needs no
 stream: RevOS keeps the table's stored columns (and its scores) in a cube of
 the table's own, `model_stream_<table id, - → _>___local`, which exists only
-while the table has one of them. Never name a table's own cube in its own
+while the table has one of them — and, for a table rooted on a stream, only
+when its `id` column is external with a `path` on the root; without it,
+stored columns and scores don't reach the view. Never name a table's own cube in its own
 `streams` (another table's own cube is fine; see *Streams*), and never send
 a `__local` stream or `streamId: "__local"`; both are obsolete and
 dropped.
@@ -131,8 +133,8 @@ send them. The cube says where its data comes from, not the table.
 { "name": "id", "type": "string", "external": true, "streamId": "<root cube>", "path": "<root's primary-key dimension>", "hidden": true }
 ```
 
-Rows are identified by it, and an external `id` is what makes the first
-stream the root. (A table whose `id` column is stored keeps its own rows
+Rows are identified by it. The first stream is the root unless the `id`
+column is stored. (A table whose `id` column is stored keeps its own rows
 instead: its streams hang off its own cube, and their paths start with
 `model_stream_…___local`. Never flip the `id` column's `external`: that
 moves the root, and every path with it.) Set `hidden: true` when the

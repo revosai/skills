@@ -75,7 +75,11 @@ query in the org until it's fixed:
 - a stream `id` that isn't a cube;
 - a `joinPath` hop that isn't a declared join;
 - an external column whose `path` isn't a member of its stream's cube;
-- an empty table name.
+- a DYNAMIC segment on the default view whose filter names a member, or
+  whose `cubes` name a hop, that doesn't exist: its conditions and join
+  paths are compiled into the view;
+- a STATIC segment whose root or `primaryKeyDimension` is wrong: its
+  `segment_…` cube joins on them.
 
 **3. One row per root record. A field from a "many" cube doesn't fit.**
 Before you add a column from any cube other than the root, find out how
@@ -112,7 +116,9 @@ So every write follows the same loop:
    - Query the table's view over the columns you touched:
      `api_read { "resource": "cubes", "method": "query", "body": { "query": { "dimensions": ["<view>.<column name>"], "limit": 3 } } }`.
      The view is named `model_<table id with - replaced by _>`, and its
-     members are the column names. An error names the bad member.
+     members are the column names. A `measure: true` column is a measure
+     of the view: put it under `measures`, not `dimensions`, or Cube
+     rejects a column that is fine. An error names the bad member.
 4. **Read the table back** and check that the columns are what you meant.
 
 ## Reading a table
@@ -122,8 +128,9 @@ So every write follows the same loop:
 - what one row is (the root cube);
 - each column, with its display name, type, and where its value comes from
   (`cube.member`, stored in RevOS, or an action);
-- which segment or filter scopes the default view (`views[].segmentId` /
-  `filter`);
+- which segment or filter scopes the default view: the table's `get`
+  already carries `views[]`, each with its `segment` (type and status)
+  included, so no `table-views` list is needed;
 - whether the table is scored (`scoringFeatures`).
 
 Don't dump the JSON. For the table's actual rows or aggregates, query its
@@ -150,6 +157,7 @@ then attach it here.
 deleted, and there is no undo. It takes with it:
 
 - the stored column values and the action results;
+- the action-run history and the action columns' schedules;
 - the scores and the change history;
 - the table's views, its view in the semantic model, and its own cube.
 
@@ -166,6 +174,11 @@ So never delete on an inference. Before the call:
      `fields`);
    - the stored cubes' `joins` (`api_read` on `cubes`,
      `fields: "name,definition"`).
+
+   - dashboard cards whose `measure` or `breakdown` names `model_<id…>`
+     (`dashboard-cards`, `fields: "id,dashboardId,title,measure,breakdown"`):
+     they don't break the model, but they show as unavailable — tell the
+     user.
 
    That covers views too: another table's view filter can only name a
    member of a cube that table joins, so it shows up in its `streams`.
@@ -187,8 +200,14 @@ So never delete on an inference. Before the call:
 The cubes and segments the table read stay, and so do the connected
 systems: deleting a table writes nothing back to them. A table you created
 yourself in a failed attempt is no exception: say so, and ask before
-deleting it. A `403` means the user's role can't delete tables; someone
-with a higher role in the organization has to do it.
+deleting it.
+
+A `403` on any write — create, update, delete, or a view update — means the
+user's role can't change tables; it needs Member. Reading works for a
+Viewer.
+
+Not reachable through these tools: action-column schedules (when an action
+column runs on its own). Send the user to the RevOS UI for those.
 
 ## Reporting back
 
