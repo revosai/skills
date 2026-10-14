@@ -21,10 +21,13 @@ act on what you find:
   `joinPath`). **Don't delete.** The table's generated view would point at a
   missing cube, and the org's model would stop compiling. The table, or that
   stream on it, has to go first. That happens in RevOS, so tell the user.
-- **Segments** with it in `cubes[].joinPath` or in filter members. **Don't
-  delete** without the user's decision. Those segments fail on their next
-  evaluation, and a table scoped by one can break too. The user should
-  change or remove those segments first.
+- **STATIC segments** whose `cubes[0].joinPath` is this cube. **Don't
+  delete**, same as a table: the segment's generated cube joins onto it, and
+  with it gone the org's model stops compiling. The segment has to go first.
+- **DYNAMIC segments** with it in `cubes[].joinPath` or in filter members.
+  **Don't delete** without the user's decision. Those segments fail on
+  their next evaluation, and a table scoped by one can break too. The user
+  should change or remove those segments first.
 - **Dashboard cards** whose measure, breakdown, conditions or `joinPaths`
   name it. The model still compiles, but those cards show as unavailable.
   Tell the user which dashboards lose what; removing or repointing the cards
@@ -33,9 +36,8 @@ act on what you find:
   joins and references first: edit each such cube with the full-definition
   update in edit.md, and verify that `meta` compiles. Only then delete.
   Otherwise the delete itself breaks compilation.
-- **It's the org's only stored cube.** Say so. With no stored cubes the org
-  has no semantic model to query. An org that once had a legacy model can
-  fall back to it.
+- **It's the org's only stored cube.** Say so. With no stored cubes the
+  org's model is just what RevOS generates for its tables and segments.
 
 ## 3. Confirm with the user
 
@@ -56,7 +58,8 @@ Then confirm the model still compiles:
 api_read { "resource": "cubes", "method": "meta", "params": { "fields": "name", "pageSize": 100 } }
 ```
 
-The cube should be gone and the call should succeed. If `meta` errors,
+The cube should be gone and the call should succeed. If `meta` errors (a
+bare "failed with status 500"),
 something still referenced the cube. Recreate it at once from the saved
 record (`api_write` with `name` + `definition`). That gives it a new id, but
 the name is what references use. Then find the reference you missed.

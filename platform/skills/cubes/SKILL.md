@@ -39,8 +39,13 @@ ignored without an error. `api_details({ resource: "cubes", operation:
 
 ## The one thing to keep in mind
 
-**The server stores whatever you send, and Cube compiles all of the org's
-cubes together.** A definition that doesn't compile doesn't fail on save.
+**The server checks a definition's shape, not whether it compiles, and Cube
+compiles all of the org's cubes together.** Unknown dimension, measure and
+join keys are rejected with a named error, but unknown keys at the top of the
+definition (`sqlTable` for `sql_table`) are silently dropped — which can leave
+a cube with no source. Always send `definition.name` too: it's optional on
+create, but Cube compiles by it. A definition that doesn't compile doesn't
+fail on save.
 It fails the *whole org's* semantic model: every table, segment, and query
 errors until someone fixes it. Common causes are a join to a cube that
 doesn't exist, a `${…}` reference to a member that isn't there, or a removed
@@ -56,23 +61,27 @@ So every write follows the same loop:
    there means the org's model no longer compiles. **Restore immediately**:
    write the saved definition back, or delete the cube you just created.
    Then tell the user what happened, and don't keep editing on a broken
-   model. If `meta` still shows the old version, wait a few seconds and read
+   model. The error itself says only "The RevOS API failed with status
+   500" — the compile error isn't passed through, so don't promise the
+   user a cause; point them to the logs or Cube Playground for it. If `meta` still shows the old version, wait a few seconds and read
    again; Cube polls for changes.
 4. **Prove the SQL** with one small query over the members you added or
    changed:
    `api_read { "resource": "cubes", "method": "query", "body": { "query": { "dimensions": ["crm_deals.stage"], "measures": ["crm_deals.count"], "limit": 3 } } }`.
    An error here names the bad column or expression. Fix it the same way.
 
-Writes need the **Developer** role. A 403 means the connected user doesn't
-have it, so say so rather than retrying.
+Writes need the **Developer** (or Admin) role. A 403 means the connected
+user doesn't have it, so say so rather than retrying.
 
 ## Before the first write: two checks
 
-**Is the org in cubes mode?** If the stored list is empty but `meta` returns
-cubes, the org is still on the legacy, auto-generated model. Creating its
-first stored cube switches the org to cubes mode, and every auto-generated
-cube disappears with it. Don't create one. Tell the user it needs a
-deliberate migration in RevOS instead.
+**What's generated, not stored?** `meta` lists the stored cubes plus what
+RevOS generates: a cube per table with stored columns or scores
+(`model_stream_…___local`, titled `[Table] <name>`), one per static segment
+(`segment_…`, `[Segment] <name>`), and a view per table (`model_…`). These
+also add joins onto stored cubes, so a cube's `joins` in `meta` can list
+joins its stored definition doesn't have. An org with no stored cubes still
+shows the generated ones; creating a cube adds to them and removes nothing.
 
 **Are the cubes managed as code?** Some orgs ship cubes from a repo with the
 RevOS CLI (`revos apply`). An edit made here is overwritten on their next
@@ -110,10 +119,12 @@ reference to the old name or member breaks:
   Each table has:
   - `streams[].id` (a cube name) and `streams[].joinPath` (dotted cube
     names);
-  - `objectsColumns[]`, whose `streamId` + `path` point at a cube's
-    dimension.
+  - `objectsColumns[]`: each `external: true` one has `streamId` + `path`
+    pointing at a cube's dimension, or its measure when `measure: true`. A
+    stream without `joinPath` is joined as `<root>.<id>`.
 - **Segments**: list them, then `get` each by id. Each has
-  `cubes[].joinPath` and the `member`s in its `filter`.
+  `cubes[].joinPath` and the `member`s in its `filter`. A STATIC one also
+  joins its `segment_…` cube on `cubes[0]`'s `primaryKeyDimension`.
 - **Dashboard cards**: list them with
   `api_read { "resource": "dashboard-cards", "params": { "fields": "id,dashboardId,title,measure,breakdown,filter,joinPaths", "pageSize": 200 } }`.
   Each names members in `measure`, `breakdown` and its `filter`, and cubes

@@ -53,14 +53,17 @@ like any other, so project it down rather than pulling the whole document:
 ```
 
 That is the whole catalogue at a few kilobytes — cheap to read and choose
-from. `pageSize` maxes out at 100; if the response carries a
+from. `pageSize` defaults to 100 and goes up to 1000 for `meta`; if the
+response carries a
 `metadata.nextPageToken`, pass it back as `params.pageToken` for the rest.
 
 The catalogue can surface internal, system-generated cubes alongside the
 business ones you'd expect — a helper cube backing a "latest scores" rollup,
 an internal segment cube, or similar plumbing that exists to support another
-cube's joins rather than to be queried directly. These usually stand out by a
-sparse or missing description, or a mechanical-sounding name/title. When a
+cube's joins rather than to be queried directly. RevOS-generated ones are titled `[Table] …` or
+`[Segment] …` (names `model_stream_…___local`, `segment_…`), and views of
+tables are named `model_…`; others stand out by a sparse or missing
+description, or a mechanical-sounding name/title. When a
 search matches both a clean, business-named cube and one of these, describe
 and query the business one unless the question is specifically about the
 internal one.
@@ -181,17 +184,19 @@ The Cube.js query goes in `body.query` — note the nesting; the body is
 Keys not listed here are forwarded to Cube unchanged, so a Cube.js feature the
 API does not name is still reachable.
 
-**`timeDimensions[].granularity`** — one of `day`, `week`, `month`, `quarter`,
-`year`. Omit it entirely for a single total across the whole range instead of
+**`timeDimensions[].granularity`** — usually one of `day`, `week`, `month`,
+`quarter`, `year` (Cube also takes `hour`/`minute`/`second`, and custom
+granularities a dimension defines). Omit it entirely for a single total across the whole range instead of
 a series.
 
 **`timeDimensions[].dateRange`** — a relative string (`"last quarter"`, `"last
 12 months"`, `"this month"`) or an explicit `["2026-01-01", "2026-03-31"]`
 pair of ISO dates.
 
-**`timeDimensions[].compareDateRange`** — for period-over-period questions
-("this month vs. last month"), an array of two or more ranges (each a relative
-string or `[from, to]` pair) to compare the same measure across.
+**Period over period** ("this month vs. last month") — run one query per
+range, each with its own `dateRange`, and compare them yourself. Avoid
+`compareDateRange`: the endpoint reads Cube's answer as one regular result,
+which a compare query isn't, so it's likely to fail with a bare 500.
 
 **`filters`** is a list of conditions, each one of:
 - A condition: `{ "member": "...", "operator": "...", "values": [...] }`.
