@@ -25,12 +25,15 @@ placeholders — `{{ col }}` and `{{col.property}}` both count, and the id is
 the part before any dot. Those columns are the subject of the diagnosis;
 the rest of `objectsColumns` is not, and a table can have dozens.
 
-**Whether each value arrived.** Look each of those column ids up in the
-run's `input`. Missing, `null` or `""` means the action was called without
-it — which is upstream of both the action and the mapping, so it is the
-explanation to reach for before proposing a mapping change. A placeholder
-in the mapping with no matching key in `input` points at the mapping
-instead.
+**Whether each value arrived.** The run's `input` is the mapping as
+rendered for this row, so it has the mapping's own keys (the action's field
+names), not column ids. Look up each key of `config.input` in the run's
+`input`. Empty values are dropped while rendering, so a **missing key**
+means the column(s) its `{{…}}` names were empty for this row — upstream of
+both the action and the mapping, and the explanation to reach for before
+proposing a mapping change. `input: {}` while the mapping isn't empty means
+the mapping failed to render or the input failed validation: that points at
+the configuration.
 
 ## Level 3 — lineage
 
@@ -42,7 +45,10 @@ value from **another table**, whose id is the captured `<id>` with every
 `_` turned back into a `-`:
 `model_stream_3f8e1c40_9a2b_4d77_bd51_6e0c2af9e413___local` is the table
 `3f8e1c40-9a2b-4d77-bd51-6e0c2af9e413`. Any other `streamId` names a cube
-the table reads directly.
+the table reads directly. A column with no `streamId` is the table's own
+stored column — typed in, or written by an action. When it is another
+action column of the same table, the actions are chained: check that
+column's runs for the row first.
 
 That is what separates "the sync from the source system never populated
 this" from "this table's own column is misconfigured" — two different
@@ -52,7 +58,9 @@ When the value comes from another table, check whether that table's own
 action failed for the related record before concluding the data is simply
 missing at the source: a deal can't sync because the company it points at
 never got its id. List that table's failed runs (`modelId` is the source
-table's id) and look for the related record by `objectName`. If it has
+table's id). `objectName` isn't filterable: filter by `objectId` when the
+related record's id is in the run's `input`, otherwise page through and
+match `objectName`. If it has
 one, _that_ error is the root cause. Diagnose it as its own run: when it
 belongs to a different action, read that action's `errorInstructions` and
 use those, not this one's.

@@ -52,7 +52,9 @@ What they become in Cube, for reasoning about results:
 The server enforces these on save, so a body that passes `api_details` can
 still be rejected:
 
-- Every condition needs `member`.
+- Every condition needs `member` or `columnId`. Segments must use
+  `member`: a `columnId`-only condition saves, then is ignored when the
+  segment is evaluated.
 - `value` is **required** for every operator except `EMPTY`, `NOT_EMPTY`,
   `CHECKED`, `NOT_CHECKED` — and should be omitted for those four.
 - `IS` / `IS_NOT` take exactly one of `"TODAY"`, `"IN_THE_FUTURE"`,

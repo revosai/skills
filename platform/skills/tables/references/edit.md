@@ -68,7 +68,10 @@ Before removing a column, check what refers to its `id`:
 - **Action columns** whose `config.input` uses `{{<that id>}}`.
 
 Tell the user what you found. For a stored column, say that its values
-become unreachable from the table. Then send `objectsColumns` without it.
+become unreachable from the table — but not erased: a stored column added
+back later under the same name shows them again. The UI's column delete
+erases them, so send the user there if they want them gone. Then send
+`objectsColumns` without it.
 If it was the last column reading a non-root stream, that stream goes
 away by itself.
 
@@ -86,5 +89,9 @@ The default view decides which rows show:
 2. `api_write { "resource": "table-views", "id": "<VIEW id>", "data": { "segmentId": "<segment id>" } }`.
    Use `"segmentId": null` to show every row again.
 
-The segment's root cube must be the table's root. If the user describes a
-new audience, build the segment first with the segments skill.
+The segment's root cube must be the table's root; the server doesn't check
+it. An attached segment overrides the view's own `filter` (send
+`"filter": {}` alongside if one is set). Then check that `meta` still
+compiles: a DYNAMIC segment's conditions are compiled into the table's
+view. If the user describes a new audience, build the segment first with
+the segments skill.

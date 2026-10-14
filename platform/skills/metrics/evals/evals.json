@@ -1,0 +1,46 @@
+{
+  "skill_name": "metrics",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "find-metric-by-meaning",
+      "prompt": "Do we have a metric for deal amount? Where is it used?",
+      "expected_output": "Reads the meta catalogue, finds the numeric deal-amount measure in a source cube (not a model_ view or a generated cube), reports its title, cube, aggregation and format, and lists the tables (views whose aliasMember points at it), segments (filter members) and dashboard cards (measure filter) that use it.",
+      "files": [],
+      "expectations": [
+        "Read cubes meta before answering",
+        "Named a measure from a source cube, not from a model_ view or a segment_ cube",
+        "Reported the aggregation and format from meta",
+        "Looked up dashboard cards with a measure filter on dashboard-cards",
+        "Did not write anything"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "scoped-value-with-breakdown",
+      "prompt": "What's the total deal amount for deals over 10k, by stage?",
+      "expected_output": "A cubes query with the amount measure, a gt 10000 filter on the deal amount dimension, the stage dimension, ordered by the measure descending then the stage ascending. Reply states what the numbers are counted over.",
+      "files": [],
+      "expectations": [
+        "Ran api_read on cubes, method query, with body.query",
+        "The query has exactly one measure",
+        "The condition is a dimension filter, not a filter on a measure",
+        "Ordered by the measure descending",
+        "Reply names the scope the numbers are counted over"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "segment-root-mismatch",
+      "prompt": "What's the total deal amount for our enterprise companies segment?",
+      "expected_output": "Reads the segment, sees it is rooted on companies rather than deals, and does not use it as a scope for a deal metric; explains why and offers conditions on the company fields along a join path instead.",
+      "files": [],
+      "expectations": [
+        "Read the segment before querying",
+        "Compared the segment's cubes[0].joinPath with the measure's cube",
+        "Did not report a value scoped by a segment rooted on another cube",
+        "Explained the mismatch in plain words"
+      ]
+    }
+  ]
+}

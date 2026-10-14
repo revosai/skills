@@ -4,13 +4,11 @@ Syntax for every part of the definition is in [definition.md](definition.md).
 
 ## 1. Check that you can and should create it
 
-- **Cubes mode.** `api_read { "resource": "cubes", "params": { "fields": "id,name" } }`
-  must return at least one cube. If it's empty but `meta` lists cubes, stop.
-  The org is on the legacy model, and its first stored cube would replace
-  all of it (see SKILL.md).
 - **Name is free.** Look for the name both among stored cubes
-  (`params: { "filter": "name == \"crm_tickets\"" }`) and in `meta`. A name
-  clash, including with a generated cube, breaks compilation.
+  (`params: { "filter": "name == \"crm_tickets\"" }`) and in `meta`. A
+  clash doesn't error helpfully: a stored record of the same name is refused
+  with a bare 500, and a `definition.name` that matches another cube, stored
+  or generated, silently replaces or merges into it.
 - **It isn't already modelled.** If a cube already reads the same
   `sql_table`, the user probably wants that cube edited, not a second copy.
   Ask.
@@ -21,11 +19,14 @@ A cube reads one warehouse table. Data synced by a connection lands as
 `<dataset>.<prefix><stream>`:
 
 ```json
-api_read { "resource": "connections", "params": { "fields": "id,name,prefix,streams" } }
+api_read { "resource": "connections", "params": { "fields": "id,name,prefix" } }
+api_read { "resource": "connections", "id": "<connection id>" }
 ```
 
-Each connection carries its `prefix`, and each stream carries its `name` and
-`primaryKey`. Take the dataset from an existing cube's `sql_table`, such as
+`streams` can't be picked with `fields` (an unknown field is silently
+ignored), so read the connection itself for them. Each connection carries its
+`prefix`, and each stream its `name` and `primaryKey` (a list of paths, e.g.
+`[["id"]]`). Take the dataset from an existing cube's `sql_table`, such as
 `analytics.crm_companies` → `analytics`. When several connections or streams
 could match the user's words, confirm which one before building.
 
@@ -76,7 +77,8 @@ Keep the returned `id`. It is your undo.
 ## 6. Verify
 
 1. `meta` with `filter: "name == \"crm_tickets\""`. An error means the org's
-   model no longer compiles. **Delete the cube at once**
+   model no longer compiles (it reads only "failed with status 500").
+   **Delete the cube at once**
    (`api_delete { "resource": "cubes", "id": "<new id>" }`), confirm `meta`
    works again, and then work out what was wrong.
 2. Query every dimension you added plus `count`, with `limit: 3`. An error

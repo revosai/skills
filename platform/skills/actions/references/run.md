@@ -62,13 +62,21 @@ api_read { "resource": "action-runs",
                        "fields": "id,objectName,status,attemptsMade" } }
 ```
 
-`ACTIVE`, `WAITING` and `DELAYED` are still in progress (`DELAYED` is
-usually a retry backing off); `COMPLETED` and `FAILED` are final. Report
-the counts, and for failures go back to SKILL.md's first level with each
-failed run's id.
+A run's row appears only when an attempt finishes, as `COMPLETED` or
+`FAILED`; progress is the rows listed against `rowsCount`. A failure is
+retried up to 3 attempts (5s, then 10s backoff), and each attempt updates the
+same row — so a `FAILED` row is final only when its
+`result.error.isUnrecoverable` is true or ~15s pass with no change (add
+`result` to `fields` to see it). Rows that never appear mean a rate-limit
+backoff still waiting (a 429 is delayed without saving a row) or a missing
+integration credential. Report the counts, and for failures go back to
+SKILL.md's first level with each failed run's id.
 
 ## Refusals
 
+- **403 with no message** — the user's role can't run actions; it needs
+  Member. Reading runs and diagnosing works for a Viewer.
+- **400** — `tableId` must be a UUID, `objectIds` 1 to 1000 entries.
 - **403, "not allowed for "Startup" plan"** — running actions needs a paid
   plan. Tell the user; there is nothing to retry.
 - **429** — runs can be started at most once every half second per

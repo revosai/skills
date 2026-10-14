@@ -27,17 +27,19 @@ a project with `revos init`.
 ### `platform`
 
 Do in chat what you'd otherwise do in the RevOS app. Starts with querying your
-live semantic model in plain English, building tables and segments, modelling the cubes behind them, and running and debugging actions — more of the app's capabilities land here
+live semantic model in plain English, building tables, segments and metric dashboards, modelling the cubes behind them, and running and debugging actions — more of the app's capabilities land here
 over time. Connects your AI assistant to your org's RevOS data over MCP,
 registered via [`.mcp.json`](platform/.mcp.json).
 
 | Skill | What it does |
 |---|---|
-| [`query-semantic-model`](platform/skills/query-semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
+| [`semantic-model`](platform/skills/semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
 | [`segments`](platform/skills/segments) | Create, edit, and delete segments (saved audiences over the semantic model), scope a table's rows with one, and diagnose a FAILED or wrong-looking segment. |
 | [`tables`](platform/skills/tables) | Create, read, edit, and delete tables (scoring models): columns from cubes, stored and action columns, related cubes as streams, and scoping rows with a segment. Guards the org's model with a compile-and-query check after every write, and a dependency check and explicit confirmation before a delete. |
 | [`cubes`](platform/skills/cubes) | Read, create, edit, and delete the cube definitions behind the semantic model — with a dependency check before removals and a compile-and-query check (and rollback) after every write. |
 | [`actions`](platform/skills/actions) | Inspect, run, and debug actions and their runs: diagnose a failed or wrong-looking run level by level (the run, its input mapping, the lineage of a missing value), apply the organization's own error instructions for the action, re-run an action column for chosen rows, and sync one record now (pull its source, then run its action). |
+| [`metrics`](platform/skills/metrics) | Find a metric (a measure of the semantic model) by what it means, see its aggregation and format and which tables, segments and dashboard cards use it, and compute its value scoped by a segment or conditions and broken down by a dimension — the same number a dashboard card shows. Reads only. |
+| [`dashboards`](platform/skills/dashboards) | Read, build, and fix the org's dashboards of metric cards: add a card scoped by a segment or its own conditions and optionally broken down, reorder or move cards, and diagnose a card the app shows as unavailable. Confirms before deleting a dashboard and every card on it. |
 
 ## Install
 
@@ -98,7 +100,7 @@ Claude chat and Cowork can install straight from this repo's plugin marketplace 
 
    <img src="docs/images/cowork-06-plugin-installed.png" width="320" alt="Installed plugin card with settings gear icon">
 
-7. In the plugin's settings, the **Skills** tab lists the skills it added (e.g. `/query-semantic-model`).
+7. In the plugin's settings, the **Skills** tab lists the skills it added (e.g. `/semantic-model`).
 
    <img src="docs/images/cowork-07-plugin-settings-skills.png" width="600" alt="Plugin settings, Skills tab">
 

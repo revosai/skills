@@ -27,7 +27,10 @@ tell you.
 
 The thing to keep in mind throughout: **the server barely validates a
 segment when you save it.** Member names, join paths, and whether a condition
-makes sense for the root are only checked by the RevOS UI's segment editor.
+makes sense for the root are only checked by the RevOS UI's segment editor —
+and once a segment is attached to a table's default view, its conditions
+are compiled into that table's view, so a bad member there can break the
+org's model, not just the segment.
 Over the API a broken segment saves with a 200 and then fails, or worse,
 quietly matches the wrong records when it's evaluated. So the checks below
 are yours to do before writing — and reading the segment back after writing
@@ -63,8 +66,9 @@ cubes query goes under `body.query`, never `params`.
 "Companies that have a won deal" has companies as members; "won deals" has
 deals as members. Same data, different audience. Choose the cube whose rows
 are the things the user wants to end up with, and confirm with the user when
-it's genuinely ambiguous — the root can't be changed after creation (doing
-that means making a new segment).
+it's genuinely ambiguous. Don't change the root after creation — the API
+won't stop you, but everything built on the segment assumes it; make a new
+segment instead.
 
 Read the catalogue first, then the root's full definition:
 
@@ -147,11 +151,18 @@ Use the stored spelling, and if nothing matches the user's term, ask rather
 than guess.
 
 **Fan-out — the trap that saves fine and answers wrong.** If the root has
-*many* of another cube (the root's `joins` entry, or the reverse, says
-`hasMany`/`one_to_many`), a **dimension** condition on that cube doesn't mean
+*many* of another cube, a **dimension** condition on that cube doesn't mean
 "members that have at least one such row" in any reliable way — it fans the
 root out across the child rows and the UI refuses to save it for exactly this
-reason. The API won't stop you.
+reason. The API won't stop you. The join may be declared on either side,
+so read both cubes' `joins` (Cube accepts snake_case and camelCase):
+
+| join found | root has… |
+|---|---|
+| root → other: `many_to_one`/`belongsTo` or `one_to_one`/`hasOne` | one |
+| other → root: `one_to_many`/`hasMany` or `one_to_one`/`hasOne` | one |
+| root → other: `one_to_many`/`hasMany` | **many** |
+| other → root: `many_to_one`/`belongsTo` (e.g. `crm_deals → crm_companies`) | **many** |
 
 Rephrase the condition as a **measure** on the child cube instead, which
 aggregates per root row:
@@ -167,16 +178,17 @@ semantic model doesn't support that condition from this root yet, and offer
 what it does support — a segment rooted on the child cube instead (won
 deals), or adding a measure to the cube.
 
-Conditions on a cube the root has **one** of (`hasOne`/`belongsTo`) are fine
-as dimension conditions.
+Conditions on a cube the root has **one** of are fine as dimension
+conditions.
 
 ### 4. Choose `type` — DYNAMIC unless the user insists
 
 - **DYNAMIC** (use this by default): re-evaluated automatically by RevOS a
-  few times a day, so it follows the data. A new or edited DYNAMIC segment
-  shows `status: "PENDING"` until the next scheduled evaluation — say so,
-  so the user isn't surprised by `objectCount` being empty right after
-  saving.
+  few times a day (every 6 hours), so it follows the data. A new DYNAMIC
+  segment shows `status: "PENDING"` until the next scheduled evaluation —
+  say so, so the user isn't surprised by `objectCount` being empty right
+  after saving. An edited one keeps its old status and `objectCount` until
+  then, though a table scoped by it uses the new filter at once.
 - **STATIC** freezes the membership at evaluation time — but evaluating is
   something the MCP tools can't trigger. A STATIC segment created here stays
   `PENDING` until someone presses *Evaluate* in the RevOS UI, and while it's
@@ -230,15 +242,19 @@ condition you left out is gone.
 4. If the new condition references a cube that isn't in `cubes` yet, add its
    `joinPath` entry and send the whole `cubes` array too. If you removed the
    last condition on some cube, drop that entry.
-5. Don't send `type` — it isn't updatable — and don't try to change the root
-   (`cubes[0]`); for a different root, create a new segment.
+5. Don't send `type` — it isn't updatable — and don't change the root
+   (`cubes[0]`): the API accepts it, but every table and card built on the
+   segment assumes the old one. For a different root, create a new segment.
 6. After the write, `api_read` the segment again and check the `filter` is
    the one you meant to save — a bumped `version` alone doesn't prove the
    change landed.
 
 Every update bumps the segment's `version` (the UI can restore older
 versions — worth mentioning if the user is nervous about an edit). A STATIC
-segment goes back to `PENDING` when its filter or cubes change.
+segment goes back to `PENDING` when its filter or cubes change, and every
+table scoped by it then shows **all** rows until someone presses *Evaluate*
+in the UI — warn the user before such an edit. If the segment scopes a
+table's default view, check that `meta` still compiles after the edit.
 
 ## Scoping a table's rows with a segment
 
@@ -250,12 +266,14 @@ segment's members, point the table's default view at the segment:
    with `isDefault: true`.
 2. `api_write({ resource: "table-views", id: "<that VIEW's id>", data: { "segmentId": "<segment id>" } })`.
 
-A view holds either a segment or its own ad-hoc filter, never both; attaching
-a segment is the better of the two. `"segmentId": null` detaches it. Use a
-segment whose root cube is the cube the table's rows come from (its main
-stream) — that's how the UI pairs them when it builds a table from a
-segment. If the segment is STATIC and not `READY`, warn that the table will
-show every row until it's evaluated.
+An attached segment overrides the view's own ad-hoc filter (which is kept,
+and comes back on detach) — send `"filter": {}` with `segmentId` when the
+view has one. `"segmentId": null` detaches it. Use a segment whose root cube
+is the cube the table's rows come from (its main stream) — that's how the UI
+pairs them, and the server doesn't check it. If the segment is STATIC and
+not `READY`, warn that the table will show every row until it's evaluated.
+Then check that `meta` still compiles: the segment's conditions and joins
+are now part of the table's view.
 
 ## Troubleshooting a segment
 
@@ -266,12 +284,15 @@ show every row until it's evaluated.
 - `EVALUATING` — in progress; check back.
 - `FAILED` — `evaluationError` has the reason, usually Cube's. The common
   causes, in order of likelihood: a member that doesn't exist (re-read the
-  cubes' `meta` and correct the name), a `joinPath` hop that isn't a real
-  join, or a condition value of the wrong kind for its member. Fix the
+  cubes' `meta` and correct the name), or a condition value of the wrong
+  kind for its member. Fix the
   segment with an edit as above; it'll be re-evaluated on the next run.
 - `READY` but the wrong members or count — the usual suspects are a fanning
   dimension condition (see step 3), a root cube that doesn't match what the
-  user meant by "member", or a join path that took the other route.
+  user meant by "member", or a join path that took the other route — or
+  one that isn't a real join at all: evaluation then silently drops the
+  segment's join paths and counts along Cube's own route, rather than
+  failing.
 
 ## Deleting
 
@@ -295,20 +316,30 @@ call:
    model goes down with it. Stop and report what you found, and don't
    change anything else for this delete yet.
 3. **Views.** The delete is refused (`409`) while any table view has the
-   segment attached. `usageCount` on the segment is the number of them; at
+   segment attached. `usageCount` is the number of them — it's only on a
+   `list`, not a get: `params: { filter: "name == \"<name>\"", fields: "id,name,usageCount" }`. At
    0, skip ahead. Otherwise find them: list the tables, then each table's
    views (`table-views`, `method: "list"`, the TABLE's id,
    `filter: "segmentId == \"<segment id>\""`), until you've found
    `usageCount` of them. Tell the user which tables it scopes. Detaching
    (`segmentId: null`) makes those tables show every row, so detach only
    with their yes.
-4. Ask for an explicit yes for **this** segment. Approval to delete one
+4. **Dashboard cards.** Not counted in `usageCount` and not a reason for a
+   `409`: a card keeps its `segmentId` after the segment is gone, and the
+   dashboard shows it as unavailable. Find them with
+   `api_read { "resource": "dashboard-cards", "params": { "filter": "segmentId == \"<segment id>\"" } }`
+   and tell the user which dashboards lose which cards.
+5. Ask for an explicit yes for **this** segment. Approval to delete one
    doesn't cover another.
-5. `api_delete`, then check that `meta` still compiles and the segment is
+6. `api_delete`, then check that `meta` still compiles and the segment is
    gone from the list. If `meta` fails, there's nothing to restore: read
    the error, find what still names the segment's cube (the places in step
    2), and tell the user what has to change.
 
 A segment you created yourself in a failed attempt is no exception: say
-so, and ask before deleting it. A `403` means the user's role can't delete
-segments; someone with a higher role in the organization has to do it.
+so, and ask before deleting it.
+
+A `403` on any write — create, update, delete, or attaching to a view — means
+the user's role can't change segments; it needs Member. Not reachable
+through these tools: evaluating, duplicating, and restoring an older
+version — send the user to the RevOS UI.
