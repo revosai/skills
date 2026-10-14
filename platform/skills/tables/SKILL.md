@@ -134,7 +134,7 @@ So every write follows the same loop:
 - whether the table is scored (`scoringFeatures`).
 
 Don't dump the JSON. For the table's actual rows or aggregates, query its
-view or the underlying cubes (see query-semantic-model).
+view or the underlying cubes (see semantic-model).
 
 ## Creating and editing
 

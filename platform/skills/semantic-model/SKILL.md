@@ -1,5 +1,5 @@
 ---
-name: query-semantic-model
+name: semantic-model
 description: >
   Answer business questions about the org's RevOS data directly in chat by querying
   its live semantic model over MCP — "how many orders…", "revenue by…", "top N…",
@@ -16,7 +16,7 @@ description: >
   not a direct source connector.
 ---
 
-# Query Semantic Model
+# Semantic Model
 
 Answer business questions by querying the org's live semantic model over the
 `RevOS` MCP server and rendering the result directly in the chat.

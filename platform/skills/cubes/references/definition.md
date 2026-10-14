@@ -52,7 +52,7 @@ conventions (dataset, quoting, `refresh_key`) before inventing your own.
   stream a cube reads. The RevOS UI uses them for the source icon and for
   table enrichment, so set them when the cube reads a connection's stream.
 - **`title`** and **`description`**: what a person sees in RevOS and what
-  query-semantic-model reads to pick a cube. Always write a one-line
+  semantic-model reads to pick a cube. Always write a one-line
   description.
 
 ## Dimensions

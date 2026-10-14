@@ -33,7 +33,7 @@ registered via [`.mcp.json`](platform/.mcp.json).
 
 | Skill | What it does |
 |---|---|
-| [`query-semantic-model`](platform/skills/query-semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
+| [`semantic-model`](platform/skills/semantic-model) | Answer a business question by querying the org's semantic model over MCP and rendering the result inline as a table / chart. |
 | [`segments`](platform/skills/segments) | Create, edit, and delete segments (saved audiences over the semantic model), scope a table's rows with one, and diagnose a FAILED or wrong-looking segment. |
 | [`tables`](platform/skills/tables) | Create, read, edit, and delete tables (scoring models): columns from cubes, stored and action columns, related cubes as streams, and scoping rows with a segment. Guards the org's model with a compile-and-query check after every write, and a dependency check and explicit confirmation before a delete. |
 | [`cubes`](platform/skills/cubes) | Read, create, edit, and delete the cube definitions behind the semantic model — with a dependency check before removals and a compile-and-query check (and rollback) after every write. |
@@ -100,7 +100,7 @@ Claude chat and Cowork can install straight from this repo's plugin marketplace 
 
    <img src="docs/images/cowork-06-plugin-installed.png" width="320" alt="Installed plugin card with settings gear icon">
 
-7. In the plugin's settings, the **Skills** tab lists the skills it added (e.g. `/query-semantic-model`).
+7. In the plugin's settings, the **Skills** tab lists the skills it added (e.g. `/semantic-model`).
 
    <img src="docs/images/cowork-07-plugin-settings-skills.png" width="600" alt="Plugin settings, Skills tab">
 

@@ -11,7 +11,7 @@ description: >
   defined ("show me the SQL behind crm_deals"), or find out why the semantic
   model or a table suddenly fails to load. Read it before any api_write or
   api_delete on the `cubes` resource. For answering business questions from
-  the data, use query-semantic-model instead; for audiences, use segments.
+  the data, use semantic-model instead; for audiences, use segments.
 ---
 
 # Cubes
@@ -104,7 +104,7 @@ apply. If the user mentions a repo or the CLI, point them there instead.
 When the user asks how a cube is defined, show the relevant part of the
 stored definition: the table, the dimensions with their types, the measures,
 and the joins. Explain it in plain words. Don't dump the JSON. To answer
-questions *about the data*, switch to query-semantic-model.
+questions *about the data*, switch to semantic-model.
 
 ## Who depends on a cube
 

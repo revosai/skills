@@ -25,7 +25,7 @@ only; nothing here writes.
 
 For ad-hoc analytical questions that aren't about one metric — several
 measures at once, custom grouping, top-N across cubes — the
-query-semantic-model skill is the better fit. Use this one when the user
+semantic-model skill is the better fit. Use this one when the user
 thinks in terms of a named metric, or wants the number a card shows.
 
 ## The catalogue
