@@ -26,8 +26,9 @@ Three things share the name, and telling them apart is most of the work:
   feed it. It lives in the table's `objectsColumns` (the tables skill covers
   adding and changing one).
 - An **action run** is one execution of one action column against one row.
-  Its status is one of `ACTIVE`, `DELAYED`, `WAITING`, `COMPLETED`,
-  `FAILED`. Runs are kept for 14 days.
+  A run is stored once an attempt finishes, so its status is always
+  `COMPLETED` or `FAILED` (the API's enum lists `ACTIVE`, `DELAYED`,
+  `WAITING` too, but no run is saved with them). Runs are kept for 14 days.
 
 You reach them through the RevOS MCP server's generic tools:
 
@@ -94,24 +95,31 @@ message straight to its cause and fix, and say who fixes it.
 holds the whole run result, a union discriminated by `metadata.success`. On
 a failure it carries:
 
-- `metadata.error.message` — the message to trust and to quote;
-- `metadata.error.aiMessage` — a generated rewording, present only if the
-  explain-error flow ran. Never present it as the system's own error;
+- `metadata.error.message` — the message to trust and to quote. When it is
+  a bare HTTP status line ("Request failed with status code 400"), the
+  vendor's own message is in `error.details.response.data`; quote that;
+- `metadata.error.aiMessage` — an AI rewording generated automatically when
+  the failure was saved (paid plans, under a daily cap). The table cell
+  shows it, as `❌ <aiMessage>`, so error text the user copied from a cell is
+  usually this rewording, not the system's message. Never present it as the
+  system's own error;
 - `error` — a normalized object with `message`, `code`, `details`,
   `isUnrecoverable` and `retryAfter`.
 
-`error.isUnrecoverable: true` means the framework deliberately stopped
-retrying: the condition is permanent (rejected credentials, a validation
-the target system will never accept), so suggesting a re-run unchanged is
-wrong.
+`error.isUnrecoverable: true` means the framework stopped retrying: any HTTP
+4xx other than 429, input that failed validation, or an action that said so.
+Re-running unchanged fails the same way; it can work once the cause is
+fixed.
 
 A large share of failures are fully explained right here — credentials the
-target system rejected, a rate limit, a permission, a validation message
+target system rejected, a permission, a validation message
 that already names the field and the reason. When `result`, read together
 with the organization's instructions, says something the user can act on,
 **that is the answer**: quote it, say what to do, stop.
 
-**When the id doesn't resolve.** A table cell goes on showing a failure
+**When the id doesn't resolve.** `api_read` by id answers `data: null`
+rather than a 404. (The id may also be the run's `jobId`, which the cell's
+`metadata.jobId` carries — both resolve.) A table cell goes on showing a failure
 long after the run behind it was removed, so an id can name a run older
 than the 14-day window. Say so and stop — no page of `action-runs` can
 contain it. If the user quoted the error text, that text is still worth

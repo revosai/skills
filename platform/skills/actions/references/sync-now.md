@@ -42,14 +42,18 @@ Read what comes back:
 
 - **`started: true`** — your call started a run. It is the one to wait for.
 - **`started: false`** — a job was already in flight, and yours did nothing.
+  When `lastSyncStartedAt` is `null` in that answer, the job isn't
+  identified: poll `syncStatus` until it ends.
   That run may predate the user's change: wait for it to end, then trigger
   again so a run that started _after_ the request exists.
 - **409** — the connection isn't active. Nothing runs. Say so and leave it;
   activating a connection is not part of this.
 
-Take each connection's usual duration from this same answer:
+Take each connection's usual duration **before** triggering, from
+`api_read { "resource": "connections", "id": "<connection id>", "method": "syncStatus" }`:
 `lastSucceededAt` minus `lastSyncStartedAt`, when `lastSyncStatus` is
-`"succeeded"`. Once your run finishes, those fields describe it instead.
+`"succeeded"` and `lastSucceededJobType` is `"sync"`. The trigger's own
+answer already describes the new job, so it can't tell you.
 
 If no active connection matches the system, don't pick one by guess. List
 the active ones and ask.
@@ -77,8 +81,9 @@ api_read { "resource": "tables", "params": { "fields": "id,name,streams", "pageS
 ```
 
 Keep the tables whose **first** stream is this record type's cube (for a
-HubSpot deal, `hubspot_deals`), read each, and keep those with a column of
-type `action`.
+HubSpot deal, `hubspot_deals`) and that have a column of type `action` —
+`fields: "id,name,streams,objectsColumns"` answers both in one list. A
+table that holds its own rows has no root stream and can't match.
 
 - One table, one action column: that is the one.
 - Several: don't choose. Name the candidates — table and column — and ask.
