@@ -56,6 +56,19 @@
         "Told the user how many cards the delete removes",
         "Asked for explicit confirmation before calling api_delete"
       ]
+    },
+    {
+      "id": 5,
+      "eval_name": "chart-on-card-without-breakdown",
+      "prompt": "On the \"[skill-eval] Pipeline\" dashboard, the deal amount card is just a number. Show it as bars.",
+      "expected_output": "Reads the card, sees it has no breakdown, offers a few dimensions from meta and asks which one; writes nothing until the user answers.",
+      "files": [],
+      "expectations": [
+        "Read the card before changing it",
+        "Asked which dimension to split by, offering two or three read from meta",
+        "Did not write the card before the user chose a dimension",
+        "Never sent visualization without a breakdown"
+      ]
     }
   ]
 }

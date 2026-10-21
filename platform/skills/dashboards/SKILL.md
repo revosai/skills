@@ -25,9 +25,14 @@ anything you add or change, everyone sees. Each holds ordered **cards**:
 | `filter` | the card's own conditions (segment filter syntax). Never both. |
 | `joinPaths` | The way to each other cube a condition or the breakdown reads: `{ "crm_companies": "crm_deals.crm_companies" }`. |
 | `breakdown` | Optional dimension: the card shows its top groups instead of one number. |
-| `visualization` | How a breakdown shows: `bars` (default), `columns`, `donut`, `table`. |
+| `visualization` | How a breakdown shows: `bars` (default), `columns`, `donut`, `table`. **Never send it without `breakdown`**: a card with no breakdown is a single number whatever this says. |
 | `title` | Shown instead of the measure's name. |
 | `position` | Order on the dashboard, ascending. |
+
+**Hard rule: never write `visualization` without `breakdown`.** A card with
+no breakdown is a single number, whatever its visualization says. Asked for a
+chart (bars, columns, a donut) without a field to split by, ask which field
+and write nothing until the user answers.
 
 A card stores the **question**, never the answer. How to pick a metric, scope
 it, and compute its value is the **metrics skill** — read it before adding a
@@ -65,6 +70,17 @@ paths and then the card's `joinPaths`, breakdown from `breakdown`. Report
 each card by its `title` (or the measure's title), its value, and what it's
 counted over.
 
+## A chart needs a breakdown
+
+When the user wants bars, columns, a donut or "a visualization" — on a new
+card or an existing one — send `breakdown` **and** `visualization` together,
+never `visualization` alone: it saves fine and the card stays a bare number
+(a title that names a split doesn't make one either). Take the dimension from
+what they said ("by pipeline", "by stage"); if they named none, offer two or
+three fitting dimensions from `meta` and ask — don't pick one yourself, and
+write nothing until they answer. Before saying the card shows a chart, check
+the read-back has `breakdown` set.
+
 ## Adding a card
 
 1. **List the dashboard's cards.** If the same measure with the same scope is
@@ -75,7 +91,9 @@ counted over.
    have many of.
 3. **Write it.** `dashboardId` and `measure` are required; add `segmentId`
    **or** `filter`, `joinPaths`, `breakdown`, `visualization`, `title` as
-   needed. Omit `position` to append.
+   needed. Omit `position` to append. A `visualization` goes in only with a
+   `breakdown`; asked for a chart with no field named, stop here and ask
+   which one (see above).
 
    The server checks that the dashboard and segment exist, that the measure
    is a numeric measure, the breakdown a dimension, every condition names a
