@@ -59,8 +59,9 @@ action-run drawer in the UI. More often they name a record — "deal
 usually carries the id its record has in the source system. It is not
 unique: the same record can be a row in several tables, and a row has an
 action column per action (a sync to NetSuite next to a write-back to
-HubSpot), each with its own runs. So list the record's newest runs without
-their payloads first:
+HubSpot), each with its own runs. So list the record's newest runs first,
+without their payloads (one run's `input` and `result` can be thousands of
+tokens):
 
 ```json
 api_read { "resource": "action-runs",
@@ -70,11 +71,11 @@ api_read { "resource": "action-runs",
 ```
 
 Add `&& modelId == "<table id>"` to the filter when you know the table.
-Then take the newest run of the table and action the question is about
-(`modelId`, `actionId`), and read that run by id. If the runs span several
-and the request doesn't say which one ("to NetSuite"), name them and ask.
-Don't list runs with their payloads: one run's `input` and `result` can be
-thousands of tokens.
+Then take the newest run of the action column the question is about
+(`modelId`, `columnId`) and read that run by id. If it is `COMPLETED`, the
+record is not failing any more: say so. If the runs span several tables or
+action columns and the request doesn't say which one ("to NetSuite"), name
+them and ask.
 
 With neither a run id nor a record, list the failures without the
 payloads:
