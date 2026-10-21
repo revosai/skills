@@ -214,9 +214,10 @@ which a compare query isn't, so it's likely to fail with a bare 500.
   mixing dimension and measure conditions inside the same `and`/`or` group
   isn't supported, keep those separate.
 
-These are Cube's own filters, on `body.query.filters`, and they are forwarded
-to Cube rather than validated against a schema here — a malformed one comes
-back as Cube's error, not a neat parameter complaint. Don't confuse them with
+These are Cube's own filters, on `body.query.filters`. The endpoint checks
+their shape (a bare string or number where a condition belongs is rejected
+with a parameter error); member names and values are Cube's to check, and a
+wrong one comes back as Cube's error. Don't confuse them with
 the `params.filter` CEL string from Step 1: that one filters the *catalogue*,
 this one filters the *data*.
 
