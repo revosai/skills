@@ -56,16 +56,25 @@ for.
 **Find the run.** The user may hand you a run id straight from the
 action-run drawer in the UI. More often they name a record — "deal
 31415926535", a company, a contact. That id is the row's `objectId`: a row
-usually carries the id its record has in the source system. One call then
-returns the newest runs for it with their payloads — there is no need to
-read the run by id afterwards — and the newest one tells you whether it is
-still failing:
+usually carries the id its record has in the source system. It is not
+unique: the same record can be a row in several tables, and a row has an
+action column per action (a sync to NetSuite next to a write-back to
+HubSpot), each with its own runs. So list the record's newest runs without
+their payloads first:
 
 ```json
 api_read { "resource": "action-runs",
            "params": { "filter": "objectId == \"<record id>\"",
-                       "orderBy": "createdAt desc", "pageSize": 3 } }
+                       "orderBy": "createdAt desc", "pageSize": 5,
+                       "fields": "id,actionId,columnId,modelId,objectName,status,createdAt" } }
 ```
+
+Add `&& modelId == "<table id>"` to the filter when you know the table.
+Then take the newest run of the table and action the question is about
+(`modelId`, `actionId`), and read that run by id. If the runs span several
+and the request doesn't say which one ("to NetSuite"), name them and ask.
+Don't list runs with their payloads: one run's `input` and `result` can be
+thousands of tokens.
 
 With neither a run id nor a record, list the failures without the
 payloads:
