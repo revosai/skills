@@ -9,9 +9,10 @@ description: >
   mean?"), when the user wants to see which actions exist or what an action
   column did, wants an action run or re-run for some or all rows, or wants
   one record synced right now from an id or a link ("sync this deal",
-  "push this company now") — even if they never say the word "action". Read
-  it before the first api_read or api_write on the `action-runs` resource,
-  and before syncing a connection for a record.
+  "push this company now"), or wants a source system synced into RevOS
+  ("sync HubSpot", "is our data up to date?") — even if they never say the
+  word "action". Read it before the first api_read or api_write on the
+  `action-runs` resource, and before syncing a connection.
 ---
 
 # Actions
@@ -174,10 +175,14 @@ customer's CRM or ERP — so only do it when the user asks, and read
 [references/run.md](references/run.md) before the first `api_write` on
 `action-runs`.
 
-When the user wants **one record synced now** — they give an id or a link
-and say "sync it", "push it", "force it" — the source has to be pulled
-before the action runs, or it sends the old values again. That is its own
-procedure: [references/sync-now.md](references/sync-now.md).
+## Syncing
+
+"Sync" means two things: **ingestion**, a connection pulling a source
+system into RevOS ("sync HubSpot"), and **activation**, an action pushing a
+row out ("sync this deal to NetSuite"). For one record synced now from an id
+or a link, ingest its source first only if RevOS doesn't have the record or
+the user just changed it there, then run the action for that one row. Read
+[references/sync-now.md](references/sync-now.md) for either.
 
 ## Adding or changing an action column
 
