@@ -180,8 +180,9 @@ customer's CRM or ERP — so only do it when the user asks, and read
 "Sync" means two things: **ingestion**, a connection pulling a source
 system into RevOS ("sync HubSpot"), and **activation**, an action pushing a
 row out ("sync this deal to NetSuite"). For one record synced now from an id
-or a link, ingest its source first only if RevOS doesn't have the record or
-the user just changed it there, then run the action for that one row. Read
+or a link, check the record in its cube first. Ingest its source only if
+RevOS doesn't have it or the user just changed it there, then run the action
+for that one row. Read
 [references/sync-now.md](references/sync-now.md) for either.
 
 ## Adding or changing an action column
