@@ -1,6 +1,6 @@
 {
   "skill_name": "actions",
-  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` lacks the owner-email key that `config.input` maps from `{{col_owner_email}}` (the column was empty for that row). The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7 and 8: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs. The Globex expansion deal is a row of crm_deals (its primary key is crm_deals.id). The deal 'Initech pilot' is a row of crm_deals and has no action runs. The deal 'Hooli launch' has no action runs and is not in crm_deals until the two crm_ connections have synced, after which it is. The deal 'Umbrella upsell' is a row of crm_deals with one COMPLETED run of sync_to_erp. The deal 'Pied Piper renewal' has no action runs and is not in crm_deals, before or after the crm_ connections sync.",
+  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` lacks the owner-email key that `config.input` maps from `{{col_owner_email}}` (the column was empty for that row). The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7, 8, 10 and 11: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs. The Globex expansion deal is a row of crm_deals (its primary key is crm_deals.id). The deal 'Initech pilot' is a row of crm_deals and has no action runs. The deal 'Hooli launch' has no action runs and is not in crm_deals until the two crm_ connections have synced, after which it is. The deal 'Umbrella upsell' is a row of crm_deals with one COMPLETED run of sync_to_erp. The deal 'Pied Piper renewal' has no action runs and is not in crm_deals, before or after the crm_ connections sync.",
   "evals": [
     {
       "id": 1,
@@ -151,20 +151,6 @@
     },
     {
       "id": 11,
-      "eval_name": "sync-source-is-ingestion",
-      "prompt": "Sync the CRM.",
-      "expected_output": "Ingestion, not activation: no record is named. Syncs both active `crm_` connections, reads their syncStatus, and reports how they ended. Touches no action column.",
-      "files": [],
-      "expectations": [
-        "Called api_write on connections with method sync for each of the two active `crm_` connections",
-        "Did not sync the inactive connection or the `erp_` connection",
-        "Read syncStatus again after triggering and waited until neither connection was running",
-        "No api_read or api_write on action-runs",
-        "Reply says which connections synced and whether they succeeded"
-      ]
-    },
-    {
-      "id": 12,
       "eval_name": "sync-record-still-missing-after-ingest",
       "prompt": "Sync the Pied Piper renewal deal to the ERP from the Deals table: <a link to the record ending in its id>.",
       "expected_output": "No row in crm_deals: the skill reads the tables before syncing, syncs both active `crm_` connections, waits for both, runs the same exact query once more, still finds nothing, and stops: it says the deal isn't in RevOS's CRM data under that id and asks the user to check it. No action is run.",

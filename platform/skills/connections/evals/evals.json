@@ -1,0 +1,105 @@
+{
+  "skill_name": "connections",
+  "_note": "Run these against a sandbox org, never production: they start real syncs. The sandbox user is a Viewer, so an api_delete is refused with 403. Fixture: four connections. `HubSpot` (prefix `hubspot_`) and `HubSpot Associations` (prefix `hubspot_assoc_`) are active and read from the same hubspot source; `HubSpot (old)` (prefix `hubspot_old_`) is inactive; `NetSuite` (prefix `netsuite_`) is active and unrelated. `HubSpot` syncs the streams `deals`, `companies` and `contacts`; its last sync succeeded 3 hours ago (job type `sync`) and took about 4 minutes. `HubSpot Associations` last succeeded 27 hours ago (job type `sync`), and its latest sync run, 3 hours ago, failed. Syncs triggered during an eval succeed. For eval 4 only: when the eval starts, a scheduled sync of `HubSpot` is already running, so the first trigger on it returns `started: false`; it ends about a minute later.",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "sync-system",
+      "prompt": "Sync HubSpot.",
+      "expected_output": "Ingestion, not activation: no record is named. Lists the connections with `fields`, takes the two active `hubspot_` connections (not the inactive `HubSpot (old)`, not `NetSuite`), reads each one's syncStatus for its usual duration, triggers both with method sync, waits until neither is running, and reports which synced and how each ended. Touches no action column.",
+      "files": [],
+      "expectations": [
+        "Listed connections with `fields`",
+        "Read syncStatus for each of `HubSpot` and `HubSpot Associations` before the first sync call",
+        "Called api_write on connections with method sync and the connection id in `id`, for each of `HubSpot` and `HubSpot Associations`",
+        "Did not sync `HubSpot (old)` or `NetSuite`",
+        "Read syncStatus after triggering, and did not report success while a connection was still running",
+        "No api_read or api_write on action-runs",
+        "Reply names both connections and says how each sync ended"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "data-up-to-date",
+      "prompt": "Is our HubSpot data up to date?",
+      "expected_output": "A question, not a request. Reads syncStatus for both active `hubspot_` connections and triggers nothing. Says `HubSpot` last synced successfully about 3 hours ago, and that `HubSpot Associations`' latest sync failed, so its data is from about 27 hours ago. Offers to sync.",
+      "files": [],
+      "expectations": [
+        "Listed connections with `fields`",
+        "Read syncStatus for `HubSpot` and for `HubSpot Associations`",
+        "No api_write of any kind",
+        "Did not read a connection by id without a method (streams aren't needed)",
+        "Reply says when `HubSpot` data last landed (about 3 hours ago)",
+        "Reply says the latest `HubSpot Associations` sync failed and its data is about 27 hours old",
+        "Reply offers to sync rather than syncing"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "inactive-connection",
+      "prompt": "Sync the HubSpot (old) connection.",
+      "expected_output": "The connection is inactive, which the list shows. Doesn't trigger it, or anything in its place, and doesn't try to change its status. Says it is inactive, that nothing ran, and that it is activated in the RevOS app.",
+      "files": [],
+      "expectations": [
+        "No api_write on `HubSpot (old)`",
+        "Did not sync `HubSpot`, `HubSpot Associations` or `NetSuite`",
+        "No api_write without a method (no attempt to update the connection)",
+        "Reply says the connection is inactive and nothing was synced",
+        "Reply says it is activated in the RevOS app"
+      ]
+    },
+    {
+      "id": 4,
+      "eval_name": "sync-already-running",
+      "prompt": "I just fixed a company's address in HubSpot. Pull HubSpot into RevOS now.",
+      "expected_output": "Triggers both active `hubspot_` connections. `HubSpot` answers `started: false`: a scheduled run started before the request and may miss the fix. Waits until it ends (running false), triggers `HubSpot` exactly once more, waits for that run too, and reports. Doesn't trigger in a loop.",
+      "files": [],
+      "expectations": [
+        "Called sync on `HubSpot` exactly twice",
+        "The second sync on `HubSpot` came after a syncStatus read that showed running false",
+        "Called sync on `HubSpot Associations` exactly once",
+        "Did not sync `HubSpot (old)` or `NetSuite`",
+        "Reply says a sync was already running and that a fresh one was started after it"
+      ]
+    },
+    {
+      "id": 5,
+      "eval_name": "what-does-it-sync",
+      "prompt": "What does our HubSpot connection pull in?",
+      "expected_output": "Lists the connections with `fields`, reads `HubSpot` by id, and names its streams: deals, companies, contacts. Triggers nothing.",
+      "files": [],
+      "expectations": [
+        "Listed connections with `fields`",
+        "Read `HubSpot` by id",
+        "No api_write of any kind",
+        "Reply names deals, companies and contacts"
+      ]
+    },
+    {
+      "id": 6,
+      "eval_name": "delete-asks-first",
+      "prompt": "Delete the HubSpot (old) connection.",
+      "expected_output": "Reads `HubSpot (old)` by id, says which one it is (name, prefix, source) and that deleting stops its syncing for good while the data already in the warehouse stays, and asks the user to confirm. No api_delete before the user confirms.",
+      "files": [],
+      "expectations": [
+        "Read `HubSpot (old)` by id",
+        "No api_delete",
+        "Reply names the connection and its prefix",
+        "Reply says the data already synced stays",
+        "Reply asks the user to confirm"
+      ]
+    },
+    {
+      "id": 7,
+      "eval_name": "change-not-possible",
+      "prompt": "Make the HubSpot connection sync every hour.",
+      "expected_output": "Changing a connection's schedule isn't possible here. Says so, and that it is done in the RevOS app. Doesn't search for another call and doesn't trigger a sync instead.",
+      "files": [],
+      "expectations": [
+        "No api_write of any kind",
+        "Did not call api_search or api_details",
+        "Reply says the schedule can't be changed here and is changed in the RevOS app"
+      ]
+    }
+  ]
+}

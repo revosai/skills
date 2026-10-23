@@ -1,25 +1,9 @@
 # Syncing
 
-"Sync" means two different things in RevOS, and the first job is to tell
-which one the user wants:
-
-- **Ingestion** pulls a source system's data (HubSpot, Salesforce,
-  NetSuite) into RevOS through its **connections**.
-- **Activation** pushes rows from RevOS into another system through an
-  **action column**.
-
-Decide by direction. Data coming **from** a system into RevOS ("sync
-HubSpot", "refresh the data", "is it up to date?") is ingestion. Data going
-**to** a system, or any named record ("sync deal X", "push this company",
-"sync the deals to HubSpot"), is activation. If it is still unclear, ask.
-
-## Ingestion: a source system
-
-"Sync HubSpot" or "refresh the data": sync every active connection of that
-system ([Syncing a connection](#syncing-a-connection)), wait for each, and
-report which synced and whether they succeeded. "Is our HubSpot data up to
-date?" is a question, not a request: read each connection's `syncStatus` and
-report `lastSucceededAt` and `lastSyncStatus`. Don't trigger anything.
+"Sync" here means pushing a named record to another system now
+(activation). Data coming **from** a system into RevOS ("sync HubSpot",
+"refresh the data", "is it up to date?") is ingestion: the `connections`
+skill, not this file. If the direction is unclear, ask.
 
 ## Activation: one record, now
 
@@ -101,9 +85,13 @@ record at the source ("I fixed the owner in HubSpot"). A bare "sync it",
 "push it" or "force it" is not that: a record step 1 found goes straight to
 step 4.
 
-Sync the source system's connections as
-[Syncing a connection](#syncing-a-connection) says, and wait until every
-sync has succeeded. If step 1 found no row, run that same query once more:
+Load the `connections` skill. Take the source system's connections as its
+"Which connections belong to a system" section says, sync them as its
+"Syncing a connection" section says, and wait until every sync has
+succeeded. If one didn't, stop and say so: don't run the action on data you
+couldn't refresh.
+
+If step 1 found no row, run that same query once more:
 
 - Still no row: say the record isn't in RevOS's data from that system under
   that id, and ask the user to check the id. Don't run the action.
@@ -124,60 +112,6 @@ following the run by `parentId`, the refusals.
 default view: it is outside the table's scope (its segment or filters), and
 no sync changes that. Say so. Don't drop `objectIds` to force it through;
 that runs the whole table.
-
-## Syncing a connection
-
-List the connections and take the system's **active** ones — those whose
-`prefix` or `name` carries its name (`hubspot_`, "HubSpot", "Hubspot
-Associations"):
-
-```json
-api_read { "resource": "connections", "params": { "fields": "id,name,status,prefix" } }
-```
-
-Sync every one of them, not only the obviously named one: a record's own
-fields and its associations — which company a deal belongs to — often
-arrive through separate connections, and syncing one of them leaves the
-record pointing at an association the warehouse hasn't caught up on. If
-none match, don't pick one by guess: list the active ones and ask.
-
-For each one, take its usual duration **before** triggering, from
-`api_read { "resource": "connections", "id": "<connection id>", "method": "syncStatus" }`:
-`lastSucceededAt` minus `lastSyncStartedAt`, when `lastSyncStatus` is
-`"succeeded"` and `lastSucceededJobType` is `"sync"`. The trigger's own
-answer already describes the new job, so it can't tell you. Then trigger:
-
-```json
-api_write { "resource": "connections", "id": "<connection id>", "method": "sync" }
-```
-
-- **`started: true`** — your call started a run. It is the one to wait for.
-- **`started: false`** — a job was already in flight, and yours did nothing.
-  When `lastSyncStartedAt` is `null` in that answer, the job isn't
-  identified: poll `syncStatus` until it ends. That run may predate the
-  user's change (or the record's arrival): once it ends, trigger once more
-  so a run that started _after_ the request exists. Once, not in a loop.
-- **409** — the connection isn't active. Nothing runs. Say so and leave it;
-  activating a connection is not part of this.
-
-**Waiting.** Read `syncStatus` again:
-
-- **`running`** — any job in flight for the connection. Wait until `false`.
-- **`lastSyncStatus`** — outcome of the most recent sync run. Anything but
-  `"succeeded"` means the data may still be stale: say so and stop before
-  the action, rather than running it on data you couldn't refresh.
-- **`lastSucceededJobType`** — read it with `lastSucceededAt`. `"sync"` or
-  `"refresh"` means fresh data landed; `"clear"` or `"reset"` means the
-  tables are now empty, which a timestamp alone reads as "just synced".
-
-Tell the user what you're waiting for and roughly how long it usually
-takes. Then pace yourself:
-
-- If you can let time pass (a sleep in a shell tool), wait about the usual
-  duration before the first check, then 20–30 seconds between checks.
-- If you can't, check once. Still running: tell the user how long it
-  usually takes and that they should ask you to check again. Don't poll in
-  a loop — checks with no time between them all see the same answer.
 
 ## Reporting back
 
