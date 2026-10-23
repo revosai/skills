@@ -170,6 +170,18 @@
         "The response quotes metadata.limit (the limit actually applied) when saying the result was truncated",
         "The skill offers paging via offset rather than silently presenting a truncated result as complete"
       ]
+    },
+    {
+      "id": 16,
+      "prompt": "How many deals are in Deals?",
+      "expected_output": "Assumes the org's deals cube has no `count` measure (its meta lists empty measures). The skill doesn't guess `<cube>.count` or use a dimension as a measure: it queries the cube's primary-key dimension with limit 0 and total true and answers with metadata.total.",
+      "expectations": [
+        "api_read with method 'query' was called at most once",
+        "No query named a measure that the cube's meta does not list (e.g. `<cube>.count` on a cube without one)",
+        "The query named the cube's primary-key dimension (the one meta marks primaryKey: true) and set body.query.limit to 0 and body.query.total to true",
+        "At most 4 api_read calls on the cubes resource in total",
+        "The answer states the number from metadata.total, and does not report an empty data array as zero deals"
+      ]
     }
   ]
 }

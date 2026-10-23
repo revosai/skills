@@ -168,7 +168,7 @@ The Cube.js query goes in `body.query` — note the nesting; the body is
 
 | Field | Shape | Notes |
 |---|---|---|
-| `measures` | `string[]` | quantities to aggregate, e.g. `gold_order_items_enriched.count` |
+| `measures` | `string[]` | quantities to aggregate, only ones `meta` lists, e.g. `gold_order_items_enriched.count`; no `count` there → see "Counting rows" |
 | `dimensions` | `string[]` | attributes to group/break down by |
 | `segments` | `string[]` | named filters from `meta`, layered on top like an extra filter |
 | `timeDimensions` | `[{ dimension, granularity?, dateRange? }]` | see below |
@@ -197,6 +197,24 @@ pair of ISO dates.
 range, each with its own `dateRange`, and compare them yourself. Avoid
 `compareDateRange`: the endpoint reads Cube's answer as one regular result,
 which a compare query isn't, so it's likely to fail with a bare 500.
+
+**Counting rows** ("how many deals") — use `<cube>.count` only when `meta`
+lists a `count` measure for that cube. Without one (empty `measures`, or no
+`count`), query the cube's primary-key dimension — the one `meta` marks
+`primaryKey: true` — with `limit: 0` and `total: true`, and answer with
+`metadata.total`:
+
+```json
+{ "query": { "dimensions": ["hubspot_deals.id"], "limit": 0, "total": true } }
+```
+
+`total` counts distinct values of the dimensions you queried, so only the
+primary key gives the row count; if no dimension is marked `primaryKey`, say
+you can't count reliably. Filters, segments and `dateRange` apply to it.
+`data` comes back empty — that is expected, not "no matches": answer in prose
+from `metadata.total` with a one-row table (e.g. `Deals | 141`), no chart. A
+breakdown ("how many per stage") needs a `count` measure; without one, say the
+cube has none.
 
 **`filters`** is a list of conditions, each one of:
 - A condition: `{ "member": "...", "operator": "...", "values": [...] }`.
@@ -429,6 +447,10 @@ follow-up query the user could ask next.
 - Always set `limit` deliberately; the endpoint applies Cube's own default,
   which is far larger than a conversation wants.
 - Set `total: true` whenever you plan to report "N of M" or offer another page.
+- Count with `<cube>.count` only when `meta` lists it; else see "Counting
+  rows" (Step 3).
+- After a "not found" error, re-read the cube's `meta` and use only members
+  it lists. Never retry name variants or put a dimension in `measures`.
 - `api_details` is the authority on what the endpoint accepts — use it when a
   call is rejected rather than guessing at the shape.
 - This is a read-only, in-chat skill — no file writes, no local project, no
