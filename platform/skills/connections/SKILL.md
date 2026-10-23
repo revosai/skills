@@ -158,8 +158,10 @@ credentials and every connection reading from it. Same rule, and name
 those connections in the confirmation, from
 `api_read { "resource": "connections", "params": { "filter": "sourceId == \"<source id>\"", "fields": "id,name,status,prefix" } }`.
 
-Both need an admin role. If `api_delete` is refused (403), say deleting
-needs an admin and is done in the RevOS app. Don't retry.
+You act with the user's own role, and both deletes need an organization
+admin: for an admin they go through on the first call, so the confirmation
+is the only check. If `api_delete` is refused (403), the user isn't an
+admin: say an admin of the organization has to do it. Don't retry.
 
 ## Reporting back
 
