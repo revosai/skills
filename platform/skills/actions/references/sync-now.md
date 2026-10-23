@@ -35,52 +35,22 @@ This is not diagnosis. If the question is _why_ it failed, that is
 SKILL.md's flow. Here the user wants it done, whether or not anything is
 broken.
 
-### 1. The record, its action column, and whether RevOS has it
+### 1. Is the record in RevOS?
 
 **The record id** is what the user gave, or the last path segment of the
 link they pasted (a HubSpot deal link ends in `/record/0-3/<id>`). It is the
 row's `objectId`. **The source system** is the one the link or the user's
 words name. Ask only if neither says.
 
-**The record has run before** — its runs name the table and the column:
-
-```json
-api_read { "resource": "action-runs",
-           "params": { "filter": "objectId == \"<record id>\"",
-                       "orderBy": "createdAt desc", "pageSize": 5,
-                       "fields": "id,actionId,columnId,modelId,objectName,status,createdAt" } }
-```
-
-Run the `modelId` and `columnId` of the newest run. If the runs span more
-than one column, name them and ask which one the user means, unless the
-request already says ("to NetSuite"). A record with runs is a row of that
-table, so it is in RevOS and needs no query: go to step 3. Exception: the
-user says they just changed it at the source ("I fixed the owner in
-HubSpot"). Then go to step 2 first. A bare "sync it", "push it" or "force
-it" is not that.
-
-**The record has no runs** — a new record, or one that was never in scope.
-Find the table from the other side:
-
-```json
-api_read { "resource": "tables", "params": { "fields": "id,name,streams,objectsColumns", "pageSize": 100 } }
-```
-
-Keep the tables whose **first** stream is this record type's cube (for a
-HubSpot deal, `hubspot_deals`) and that have a column of type `action`. A
-table that holds its own rows has no root stream and can't match.
-
-- One table, one action column: that is the one.
-- Several: unless the request already names the table or column, don't
-  choose. Name the candidates — table and column — and ask. Organizations
-  split one record type across tables by rules of their own (a pipeline, a
-  region, a test copy), and those rules are not in the API.
-- None: say there is no action set up for this kind of record.
-
-Then check that the record is in that cube. Take its primary-key dimension —
-the one `meta` marks `primaryKey: true` — from
-`api_read { "resource": "cubes", "method": "meta", "params": { "filter": "name == \"<cube>\"" } }`,
-and run one exact query:
+Look the record up in the semantic model, not in `action-runs`. Its cube is
+the source system's cube for that record type: for a HubSpot deal,
+`hubspot_deals`. Pick it from the catalogue,
+`api_read { "resource": "cubes", "method": "meta", "params": { "fields": "name,title,description", "pageSize": 1000 } }`
+— the business cube, not an internal one (`[Table] …`, `[Segment] …`,
+`model_stream_…___local`). Read its primary-key dimension, the one `meta`
+marks `primaryKey: true`, from
+`api_read { "resource": "cubes", "method": "meta", "params": { "filter": "name == \"<cube>\"" } }`.
+Then one exact query:
 
 ```json
 api_read { "resource": "cubes", "method": "query",
@@ -91,25 +61,55 @@ api_read { "resource": "cubes", "method": "query",
              "limit": 1 } } }
 ```
 
-One row: it is in RevOS. Go to step 3, or to step 2 first if the user just
-changed it at the source. No rows: step 2. Don't retry with `contains`,
-another field or another cube. An exact id that isn't there is the answer.
+One row or none, go on to step 2. Don't retry with `contains`, another field
+or another cube: an exact id that isn't there is the answer.
 
-### 2. Ingest the source first
+### 2. The table and its action column
+
+```json
+api_read { "resource": "tables", "params": { "fields": "id,name,streams,objectsColumns", "pageSize": 100 } }
+```
+
+Keep the tables whose **first** stream is the record's cube and that have a
+column of type `action`. A table that holds its own rows has no root stream
+and can't match.
+
+- One table, one action column: that is the one.
+- Several: unless the request already names the table or column, don't
+  choose. Name the candidates — table and column — and ask. Organizations
+  split one record type across tables by rules of their own (a pipeline, a
+  region, a test copy), and those rules are not in the API.
+- None: ask the user which table, or say there is no action set up for this
+  kind of record. Only if the user can't name one either, as a last resort,
+  read the record's newest runs, then name what you found and confirm it
+  with the user before running. A run keeps the column it ran with, and that
+  column may since have been replaced.
+
+  ```json
+  api_read { "resource": "action-runs",
+             "params": { "filter": "objectId == \"<record id>\"",
+                         "orderBy": "createdAt desc", "pageSize": 5,
+                         "fields": "id,actionId,columnId,modelId,objectName,status,createdAt" } }
+  ```
+
+No table and column: stop here, and don't sync anything.
+
+### 3. Ingest the source, only when needed
+
+Only when step 1 found no row, or the user says they just changed the
+record at the source ("I fixed the owner in HubSpot"). A bare "sync it",
+"push it" or "force it" is not that: a record step 1 found goes straight to
+step 4.
 
 Sync the source system's connections as
 [Syncing a connection](#syncing-a-connection) says, and wait until every
-sync has succeeded.
-
-If step 1 found no row, run that same query once more now:
+sync has succeeded. If step 1 found no row, run that same query once more:
 
 - Still no row: say the record isn't in RevOS's data from that system under
   that id, and ask the user to check the id. Don't run the action.
 - One row: go on.
 
-If the record was already there and only stale, go straight to step 3.
-
-### 3. Run the action for that one row
+### 4. Run the action for that one row
 
 ```json
 api_write { "resource": "action-runs",
@@ -120,10 +120,10 @@ api_write { "resource": "action-runs",
 Always with `objectIds`. The rest is in [run.md](run.md): what comes back,
 following the run by `parentId`, the refusals.
 
-`rowsCount: 0` means the record is not a row of that table's default view:
-outside its scope (segment or filters), or, for a record known only from
-old runs, gone from the source. No sync changes that. Say so. Don't drop
-`objectIds` to force it through; that runs the whole table.
+`rowsCount: 0` means the record is in RevOS but not a row of that table's
+default view: it is outside the table's scope (its segment or filters), and
+no sync changes that. Say so. Don't drop `objectIds` to force it through;
+that runs the whole table.
 
 ## Syncing a connection
 
