@@ -1,22 +1,9 @@
 # Syncing
 
-"Sync" means two different things in RevOS, and the first job is to tell
-which one the user wants:
-
-- **Ingestion** pulls a source system's data (HubSpot, Salesforce,
-  NetSuite) into RevOS through its **connections**.
-- **Activation** pushes rows from RevOS into another system through an
-  **action column**.
-
-Decide by direction. Data coming **from** a system into RevOS ("sync
-HubSpot", "refresh the data", "is it up to date?") is ingestion. Data going
-**to** a system, or any named record ("sync deal X", "push this company",
-"sync the deals to HubSpot"), is activation. If it is still unclear, ask.
-
-## Ingestion: a source system
-
-"Sync HubSpot", "refresh the data", "is our data up to date?": the
-`connections` skill. Load it and follow it; nothing in this file applies.
+"Sync" here means pushing a named record to another system now
+(activation). Data coming **from** a system into RevOS ("sync HubSpot",
+"refresh the data", "is it up to date?") is ingestion: the `connections`
+skill, not this file. If the direction is unclear, ask.
 
 ## Activation: one record, now
 

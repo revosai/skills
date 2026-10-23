@@ -1,6 +1,6 @@
 {
   "skill_name": "connections",
-  "_note": "Run these against a sandbox org, never production: they start real syncs. Fixture: four connections. `HubSpot` (prefix `hubspot_`) and `HubSpot Associations` (prefix `hubspot_assoc_`) are active and read from the same hubspot source; `HubSpot (old)` (prefix `hubspot_old_`) is inactive; `NetSuite` (prefix `netsuite_`) is active and unrelated. `HubSpot` syncs the streams `deals`, `companies` and `contacts`; its last sync succeeded 3 hours ago and took about 4 minutes. `HubSpot Associations` last succeeded 27 hours ago, and its latest sync run, 3 hours ago, failed. For eval 4 only: when the eval starts, a scheduled sync of `HubSpot` is already running, so the first trigger on it returns `started: false`; it ends about a minute later.",
+  "_note": "Run these against a sandbox org, never production: they start real syncs. The sandbox user is a Viewer, so an api_delete is refused with 403. Fixture: four connections. `HubSpot` (prefix `hubspot_`) and `HubSpot Associations` (prefix `hubspot_assoc_`) are active and read from the same hubspot source; `HubSpot (old)` (prefix `hubspot_old_`) is inactive; `NetSuite` (prefix `netsuite_`) is active and unrelated. `HubSpot` syncs the streams `deals`, `companies` and `contacts`; its last sync succeeded 3 hours ago (job type `sync`) and took about 4 minutes. `HubSpot Associations` last succeeded 27 hours ago (job type `sync`), and its latest sync run, 3 hours ago, failed. Syncs triggered during an eval succeed. For eval 4 only: when the eval starts, a scheduled sync of `HubSpot` is already running, so the first trigger on it returns `started: false`; it ends about a minute later.",
   "evals": [
     {
       "id": 1,
@@ -10,6 +10,7 @@
       "files": [],
       "expectations": [
         "Listed connections with `fields`",
+        "Read syncStatus for each of `HubSpot` and `HubSpot Associations` before the first sync call",
         "Called api_write on connections with method sync and the connection id in `id`, for each of `HubSpot` and `HubSpot Associations`",
         "Did not sync `HubSpot (old)` or `NetSuite`",
         "Read syncStatus after triggering, and did not report success while a connection was still running",
@@ -24,6 +25,7 @@
       "expected_output": "A question, not a request. Reads syncStatus for both active `hubspot_` connections and triggers nothing. Says `HubSpot` last synced successfully about 3 hours ago, and that `HubSpot Associations`' latest sync failed, so its data is from about 27 hours ago. Offers to sync.",
       "files": [],
       "expectations": [
+        "Listed connections with `fields`",
         "Read syncStatus for `HubSpot` and for `HubSpot Associations`",
         "No api_write of any kind",
         "Did not read a connection by id without a method (streams aren't needed)",
@@ -36,10 +38,10 @@
       "id": 3,
       "eval_name": "inactive-connection",
       "prompt": "Sync the HubSpot (old) connection.",
-      "expected_output": "The connection is inactive. Either sees that in the list and doesn't trigger it, or triggers it once and gets 409. Says it is inactive, that nothing ran, and that it is activated in the RevOS app. Doesn't sync another connection in its place and doesn't try to change its status.",
+      "expected_output": "The connection is inactive, which the list shows. Doesn't trigger it, or anything in its place, and doesn't try to change its status. Says it is inactive, that nothing ran, and that it is activated in the RevOS app.",
       "files": [],
       "expectations": [
-        "At most one api_write on connections, and only on `HubSpot (old)` with method sync",
+        "No api_write on `HubSpot (old)`",
         "Did not sync `HubSpot`, `HubSpot Associations` or `NetSuite`",
         "No api_write without a method (no attempt to update the connection)",
         "Reply says the connection is inactive and nothing was synced",
@@ -71,6 +73,32 @@
         "Read `HubSpot` by id",
         "No api_write of any kind",
         "Reply names deals, companies and contacts"
+      ]
+    },
+    {
+      "id": 6,
+      "eval_name": "delete-asks-first",
+      "prompt": "Delete the HubSpot (old) connection.",
+      "expected_output": "Reads `HubSpot (old)` by id, says which one it is (name, prefix, source) and that deleting stops its syncing for good while the data already in the warehouse stays, and asks the user to confirm. No api_delete before the user confirms.",
+      "files": [],
+      "expectations": [
+        "Read `HubSpot (old)` by id",
+        "No api_delete",
+        "Reply names the connection and its prefix",
+        "Reply says the data already synced stays",
+        "Reply asks the user to confirm"
+      ]
+    },
+    {
+      "id": 7,
+      "eval_name": "change-not-possible",
+      "prompt": "Make the HubSpot connection sync every hour.",
+      "expected_output": "Changing a connection's schedule isn't possible here. Says so, and that it is done in the RevOS app. Doesn't search for another call and doesn't trigger a sync instead.",
+      "files": [],
+      "expectations": [
+        "No api_write of any kind",
+        "Did not call api_search or api_details",
+        "Reply says the schedule can't be changed here and is changed in the RevOS app"
       ]
     }
   ]
