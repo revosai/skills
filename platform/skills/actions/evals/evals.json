@@ -1,6 +1,6 @@
 {
   "skill_name": "actions",
-  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` lacks the owner-email key that `config.input` maps from `{{col_owner_email}}` (the column was empty for that row). The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7 and 8: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs.",
+  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` lacks the owner-email key that `config.input` maps from `{{col_owner_email}}` (the column was empty for that row). The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7 and 8: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs. The Globex expansion deal is a row of crm_deals (its primary key is crm_deals.id). The deal 'Initech pilot' is not in crm_deals. The deal 'Hooli launch' has no action runs and is not in crm_deals until the two crm_ connections have synced, after which it is. The deal 'Umbrella upsell' is a row of crm_deals with one COMPLETED run of sync_to_erp. The deal 'Pied Piper renewal' has no action runs and is not in crm_deals, before or after the crm_ connections sync.",
   "evals": [
     {
       "id": 1,
@@ -89,7 +89,7 @@
       "id": 7,
       "eval_name": "sync-record-now",
       "prompt": "I've just fixed the owner on the Globex expansion deal in the CRM. Sync that deal now: <a link to the record ending in its id>.",
-      "expected_output": "Takes the record id from the link and the source system from it too, syncs both active `crm_` connections (not the inactive one, not the `erp_` one), finds the deal's action column from its existing runs, waits until neither connection is running and both report a succeeded sync, then starts the action for that one record with objectIds and reports how the run ended. Nothing is run before the syncs finish.",
+      "expected_output": "The user just changed the deal in the CRM, so RevOS's copy is stale even though the deal is there. Takes the record id and the source system from the link, finds the deal's action column from its existing runs, syncs both active `crm_` connections (not the inactive one, not the `erp_` one), waits until neither connection is running and both report a succeeded sync, then starts the action for that one record with objectIds and reports how the run ended. Nothing is run before the syncs finish.",
       "files": [],
       "expectations": [
         "Called api_write on connections with method sync for each of the two active `crm_` connections",
@@ -98,21 +98,79 @@
         "Read syncStatus and did not start the action while a connection was still running",
         "The only api_write on action-runs has objectIds with exactly that one record id",
         "The api_write on action-runs comes after the connection syncs",
-        "Reply names the connections synced and the outcome of the run"
+        "Reply names the connections synced and the outcome of the run",
+        "No api_read on cubes with method query (the record has runs and the user said it just changed)"
       ]
     },
     {
       "id": 8,
       "eval_name": "sync-record-never-run",
       "prompt": "Sync the Initech pilot deal now: <a link to the record ending in its id>.",
-      "expected_output": "Syncs the active `crm_` connections, finds no action runs for the record, lists the tables whose first stream is `crm_deals` and finds two with an action column. Doesn't pick one: names both candidates (table and action column) and asks which to run. No action run is started.",
+      "expected_output": "Finds no action runs for the record, lists the tables whose first stream is `crm_deals` and finds two with an action column. Doesn't pick one: names both candidates (table and action column) and asks which to run. Nothing is synced or run before the user answers.",
       "files": [],
       "expectations": [
         "Listed action-runs filtered by objectId and found none",
         "Read tables to find those whose first stream is `crm_deals`",
         "Reply names both candidate tables and their action columns",
         "Reply asks the user which one to run",
-        "No api_write on action-runs"
+        "No api_write on action-runs",
+        "No api_write on connections"
+      ]
+    },
+    {
+      "id": 9,
+      "eval_name": "sync-record-already-in-revos",
+      "prompt": "Push the Umbrella upsell deal to the ERP: <a link to the record ending in its id>.",
+      "expected_output": "Activation of a record RevOS already has, with no word of a change at the source. Finds the Umbrella upsell deal's action column from its runs (which also show it is a row of Deals) and runs it for that one record. No connection is synced.",
+      "files": [],
+      "expectations": [
+        "Listed action-runs filtered by objectId equal to the id from the link",
+        "No api_write on connections",
+        "The only api_write on action-runs has objectIds with exactly that one record id",
+        "Reply says the deal was already in RevOS and how the run ended"
+      ]
+    },
+    {
+      "id": 10,
+      "eval_name": "sync-record-missing-ingests-first",
+      "prompt": "Sync the Hooli launch deal to the ERP from the Deals table: <a link to the record ending in its id>.",
+      "expected_output": "The deal has no runs, so the skill takes the Deals table's action column and checks the deal in `crm_deals` with one exact query on its primary key. No row: it syncs both active `crm_` connections, waits for both to succeed, runs the same query once more, finds the row, and only then runs the action for that one record.",
+      "files": [],
+      "expectations": [
+        "Listed action-runs filtered by objectId and found none",
+        "Read meta for crm_deals before the first query",
+        "Queried cubes with an equals filter on crm_deals.id and the record id before any connection sync",
+        "Called api_write on connections with method sync for each of the two active `crm_` connections, and for no other connection",
+        "Ran the same exact query again after the syncs succeeded",
+        "The only api_write on action-runs has objectIds with exactly that one record id, and comes after the second query",
+        "No query on crm_deals used `contains` or another field"
+      ]
+    },
+    {
+      "id": 11,
+      "eval_name": "sync-source-is-ingestion",
+      "prompt": "Sync the CRM.",
+      "expected_output": "Ingestion, not activation: no record is named. Syncs both active `crm_` connections, reads their syncStatus, and reports how they ended. Touches no action column.",
+      "files": [],
+      "expectations": [
+        "Called api_write on connections with method sync for each of the two active `crm_` connections",
+        "Did not sync the inactive connection or the `erp_` connection",
+        "Read syncStatus again after triggering and waited until neither connection was running",
+        "No api_read or api_write on action-runs",
+        "Reply says which connections synced and whether they succeeded"
+      ]
+    },
+    {
+      "id": 12,
+      "eval_name": "sync-record-still-missing-after-ingest",
+      "prompt": "Sync the Pied Piper renewal deal to the ERP from the Deals table: <a link to the record ending in its id>.",
+      "expected_output": "No runs and no row in crm_deals: the skill syncs both active `crm_` connections, waits for both, runs the same exact query once more, still finds nothing, and stops: it says the deal isn't in RevOS's CRM data under that id and asks the user to check it. No action is run.",
+      "files": [],
+      "expectations": [
+        "Called api_write on connections with method sync for each of the two active `crm_` connections",
+        "Ran the same exact query on crm_deals twice, once before and once after the syncs, and no other query on it",
+        "No api_write on action-runs",
+        "Reply asks the user to check the deal's id"
       ]
     }
   ]
