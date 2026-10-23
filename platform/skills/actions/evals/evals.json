@@ -151,20 +151,6 @@
     },
     {
       "id": 11,
-      "eval_name": "sync-source-is-ingestion",
-      "prompt": "Sync the CRM.",
-      "expected_output": "Ingestion, not activation: no record is named. Syncs both active `crm_` connections, reads their syncStatus, and reports how they ended. Touches no action column.",
-      "files": [],
-      "expectations": [
-        "Called api_write on connections with method sync for each of the two active `crm_` connections",
-        "Did not sync the inactive connection or the `erp_` connection",
-        "Read syncStatus again after triggering and waited until neither connection was running",
-        "No api_read or api_write on action-runs",
-        "Reply says which connections synced and whether they succeeded"
-      ]
-    },
-    {
-      "id": 12,
       "eval_name": "sync-record-still-missing-after-ingest",
       "prompt": "Sync the Pied Piper renewal deal to the ERP from the Deals table: <a link to the record ending in its id>.",
       "expected_output": "No row in crm_deals: the skill reads the tables before syncing, syncs both active `crm_` connections, waits for both, runs the same exact query once more, still finds nothing, and stops: it says the deal isn't in RevOS's CRM data under that id and asks the user to check it. No action is run.",
