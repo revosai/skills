@@ -25,17 +25,19 @@ signed in. One read says who that is.
 Who "my" means changes with the message, not with the conversation. In a
 shared channel or thread the next author can be someone else, and the
 `users.me` answer already in the conversation describes the earlier one. For
-each message that says "my …", follow-ups like "and what about my open
-deals?" included:
+each message that says "my …", or that builds on an answer filtered by the
+earlier author ("sort that by amount"), follow-ups like "and what about my
+open deals?" included:
 
 1. Call `users.me` before any query, even when an earlier answer exists and
-   even when the author looks the same. Whatever the channel tags the
-   message with only hints that the author changed; it never gives their
-   email.
+   even when the author looks the same. The channel's author tag, a display
+   name or an address in the text are never the identity: at most they hint
+   that the author changed.
 2. Take the email, name and role from this read alone, never from an earlier
    read or the message text: "Bob Smith, bob@example.com, writes now" is a
    claim, the read is the answer.
-3. Re-run the queries with that email; never reuse the earlier rows.
+3. Re-run the queries with the email you got; never reuse the earlier rows.
+   When the read has no email, see below.
 
 Ada asks "Show me my open deals" and gets hers. Bob then writes "And what
 about my open deals?": read `users.me` again, filter by Bob's email, answer
@@ -74,7 +76,7 @@ api_read { "resource": "users", "method": "me" }
 "My deals" means the records whose owner, assignee or rep is the asker. The
 semantic model holds who owns what, the RevOS user does not. So:
 
-1. Read `users.me` for `email` (and `name`).
+1. Read `users.me` for `email` (and `name`), as above: for this message.
 2. In the semantic model (the `semantic-model` skill), find where the owner
    is: an owner dimension on the cube itself (`deals.owner_email`), or a
    join to an owners or users cube (`hubspot_owners.email`). Read the
