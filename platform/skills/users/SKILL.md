@@ -44,8 +44,10 @@ Always with `method: "me"`; the resource has no list and no read by id.
   themselves. Either way `id`, `email` and `name` are the person's, never the
   agent's.
 
-Call it once per conversation and reuse the answer. The person does not
-change between turns, so don't call it again for every question.
+Call it for each message whose "my …" you answer, not once per conversation:
+in a shared channel or thread, different people write in turn, and every call
+is made as the author of the message it answers. Reuse the answer only
+within one person's messages, never for the next author's.
 
 ## Answering "my …"
 
@@ -59,14 +61,20 @@ semantic model holds who owns what, the RevOS user does not. So:
    cube's `meta` rather than guessing a member name.
 3. Filter by the email: `{ "member": "<owners cube>.email", "operator":
    "equals", "values": ["<email>"] }`. `equals` is case-sensitive and
-   systems store emails in different case, so when it finds nothing, ask
-   once more with `"operator": "contains"` (case-insensitive) and keep only
-   owners whose email is the same address ignoring case.
-4. Answer, and say once whom you matched on: "deals owned by
-   ada@example.com".
+   systems store emails in different case, so when it finds nothing, list
+   the owners with `"operator": "contains"` (case-insensitive) and keep only
+   the one whose email is the same address ignoring case (`contains
+   ada@example.com` also matches `nada@example.com`). Then run the real query
+   again with `equals` on that stored value. Never put the `contains` filter
+   in a query that totals or counts: the extra owners can't be told apart
+   afterwards.
+4. Answer, and say once whom you matched on, by the owner's name:
+   "deals owned by Ada Lovelace".
 
 If the organization's own instructions say how "my" maps for them (another
-field, several email domains for one person), follow those over step 3.
+field, several email domains for one person), follow those over step 3. They
+change which field you filter by, never whether you filter: when they leave
+you nothing to filter by, treat it as no match below.
 
 **No match is not "you have no deals".** The person may be missing from
 the owners table, or be listed under another address. Say that no owner
@@ -80,11 +88,12 @@ tell which records are theirs, and ask which owner to filter by.
 ## When there is no person
 
 A scheduled run, or an agent with nobody in the conversation, calls as the
-agent's own user: `actor` is `null` and the email is the agent's, not a
-person's (often a `bot`/`agent`/`noreply`-style address). There is no "my"
-to answer then. Don't filter by that email; say which person's records you
-need and ask, or answer for the whole organization only if that is what was
-asked.
+agent's own user, whose email is the agent's, not a person's. `actor` can't
+tell you: it is `null` for a person acting as themselves and for such a run
+alike. What tells you is whether a person wrote the message you are
+answering. If none did, there is no "my" to answer. Don't filter by that
+email; say which person's records you need and ask, or answer for the whole
+organization only if that is what was asked.
 
 ## Errors
 
@@ -104,6 +113,8 @@ or say it isn't available.
 
 ## Reporting back
 
-Use the person's name, not their user id. Don't print their email unless
-it's what they asked for or what you matched on. Say what you matched on
-when it shaped the answer, so a wrong match is easy to spot.
+Use the person's name, not their user id. Say whose records you matched, by
+the owner's name, so a wrong match is easy to spot. Print their email only
+when they asked for it or when it is the match that needs checking (no owner
+matched it, or the owner found carries a different address): answers in a
+shared channel are read by everyone in it.

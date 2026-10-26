@@ -1,19 +1,19 @@
 {
   "skill_name": "users",
-  "_note": "Needs an api with GET /users/me (revosai/api#1859). Fixture: the asker is Ada Lovelace, `ada@example.com`, role `member`, acting through an agent (`actor` is a machine). The semantic model has `hubspot_deals` (measures `count`, `amount`; dimension `dealname`, `dealstage`) joined to `hubspot_owners` (dimensions `email`, `first_name`, `last_name`). Ada owns 3 open deals under `ada@example.com`. For eval 3 only, `hubspot_owners` has Ada as `Ada.Lovelace@Example.com` and no exact lowercase match. For eval 4 only, the asker is Bob Smith, `bob@example.com`, who is not in `hubspot_owners`.",
+  "_note": "Needs an api with GET /users/me (revosai/api#1859). Fixture: the asker is Ada Lovelace, `ada@example.com`, role `member`, acting through an agent (`actor` is a machine). The semantic model has `hubspot_deals` (measures `count`, `amount`; dimension `dealname`, `dealstage`) joined to `hubspot_owners` (dimensions `email`, `first_name`, `last_name`). Ada owns 3 open deals under `ada@example.com`. For eval 3 only, `hubspot_owners` has Ada as `Ada.Lovelace@Example.com` and no exact lowercase match. For eval 4 only, the asker is Bob Smith, `bob@example.com`, who is not in `hubspot_owners`. For eval 6 only, Bob is in `hubspot_owners` as `bob@example.com` and owns 2 open deals.",
   "evals": [
     {
       "id": 1,
       "eval_name": "my-deals",
       "prompt": "Show me my open deals.",
-      "expected_output": "Reads users.me, finds the owner email in the semantic model's meta, queries hubspot_deals filtered by hubspot_owners.email equals ada@example.com, lists the 3 deals, and says it matched on ada@example.com.",
+      "expected_output": "Reads users.me, finds the owner email in the semantic model's meta, queries hubspot_deals filtered by hubspot_owners.email equals ada@example.com, lists the 3 deals, and says they are Ada Lovelace's without printing her email.",
       "files": [],
       "expectations": [
         "Called api_read on users with method me",
         "Read cubes meta before querying",
         "The cubes query filters hubspot_owners.email by ada@example.com",
         "Did not run an unfiltered deals query and present it as the user's",
-        "Reply lists 3 deals and says it matched on the email"
+        "Reply lists 3 deals and names the owner they were matched to, without printing the email"
       ]
     },
     {
@@ -33,13 +33,14 @@
       "id": 3,
       "eval_name": "email-case-mismatch",
       "prompt": "How big is my pipeline?",
-      "expected_output": "The exact filter finds nothing; retries with the address's case variant or a case-insensitive match before concluding, finds Ada's deals, and reports the amount with what it matched on.",
+      "expected_output": "The exact filter finds nothing; lists the owners matching case-insensitively, picks Ada's by exact address ignoring case, re-queries with equals on the stored value, and reports the amount and whose pipeline it is.",
       "files": [],
       "expectations": [
         "Called api_read on users with method me",
         "Ran more than one owner filter before saying there is no match",
+        "Did not use a contains filter in the query that totals the pipeline",
         "Did not report zero or 'no deals' as the final answer",
-        "Reply says what it matched on"
+        "Reply says whose pipeline it is"
       ]
     },
     {
@@ -64,6 +65,19 @@
       "expectations": [
         "No api_read on users with an id or without method me",
         "Reply does not invent an address"
+      ]
+    },
+    {
+      "id": 6,
+      "eval_name": "shared-thread-second-asker",
+      "prompt": "(Shared channel, one thread. Ada asked \"Show me my open deals.\" and got her answer. Now Bob Smith, bob@example.com, who owns 2 open deals, writes in the same thread:) And what about my open deals?",
+      "expected_output": "Reads users.me again for Bob's message instead of reusing Ada's answer, filters by Bob's email, lists Bob's 2 deals, and does not show Ada's deals or email.",
+      "files": [],
+      "expectations": [
+        "Called api_read on users with method me again for Bob's message",
+        "The cubes query filters hubspot_owners.email by bob@example.com, not ada@example.com",
+        "Reply lists Bob's 2 deals and none of Ada's",
+        "Reply does not print Ada's email"
       ]
     }
   ]
