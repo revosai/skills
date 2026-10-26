@@ -74,7 +74,7 @@
       "expected_output": "Reads users.me again for Bob's message instead of reusing Ada's answer, filters by Bob's email, lists Bob's 2 deals, and does not show Ada's deals or email.",
       "files": [],
       "expectations": [
-        "Called api_read on users with method me again for Bob's message",
+        "Called api_read on users with method me again for Bob's message, before any cubes query",
         "The cubes query filters hubspot_owners.email by bob@example.com, not ada@example.com",
         "Reply lists Bob's 2 deals and none of Ada's",
         "Reply does not print Ada's email"

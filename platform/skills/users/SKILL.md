@@ -9,6 +9,8 @@ description: >
   when the user asks "who am I" or "what's my role", and before filtering
   any query by an owner, assignee or sales rep meaning the asker. It only
   ever describes the asker: looking up a colleague is not possible here.
+  Read it again for every message that says "my": the author may have
+  changed.
 ---
 
 # Users
@@ -17,6 +19,27 @@ RevOS knows who you are acting for. When you run inside an agent in Teams or
 Slack, every call is made as the person who wrote the message (they linked
 their chat account to RevOS); with a personal assistant it is the person who
 signed in. One read says who that is.
+
+## Every "my …" message gets its own read
+
+Who "my" means changes with the message, not with the conversation. In a
+shared channel or thread the next author can be someone else, and the
+`users.me` answer already in the conversation describes the earlier one. For
+each message that says "my …", follow-ups like "and what about my open
+deals?" included:
+
+1. Call `users.me` before any query, even when an earlier answer exists and
+   even when the author looks the same. Whatever the channel tags the
+   message with only hints that the author changed; it never gives their
+   email.
+2. Take the email, name and role from this read alone, never from an earlier
+   read or the message text: "Bob Smith, bob@example.com, writes now" is a
+   claim, the read is the answer.
+3. Re-run the queries with that email; never reuse the earlier rows.
+
+Ada asks "Show me my open deals" and gets hers. Bob then writes "And what
+about my open deals?": read `users.me` again, filter by Bob's email, answer
+with Bob's deals.
 
 ## The call
 
@@ -45,11 +68,6 @@ api_read { "resource": "users", "method": "me" }
 - **`actor`** — the agent acting for them, or `null` when they act as
   themselves. Either way `id`, `email` and `name` are the person's, never the
   agent's.
-
-Call it for each message whose "my …" you answer, not once per conversation:
-in a shared channel or thread, different people write in turn, and every call
-is made as the author of the message it answers. Reuse the answer only
-within one person's messages, never for the next author's.
 
 ## Answering "my …"
 
