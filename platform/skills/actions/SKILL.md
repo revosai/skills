@@ -7,9 +7,9 @@ description: >
   whenever something failed, did not sync, or came out wrong ("why didn't
   this deal reach NetSuite?", "the sync is red", "how many deals have a
   sync error?", "what does this error mean?"), when the user wants to see
-  which actions exist or what an action column did, wants an action run or re-run for some or all rows, or wants
-  one record synced right now from an id or a link ("sync this deal",
-  "push this company now") — even if they never say the word "action".
+  which actions exist or what an action column did, wants an action run or
+  re-run for some or all rows, or wants one record synced right now from an
+  id or a link ("sync this deal", "push this company now") — even if they never say the word "action".
   Read it before the first api_read or api_write on the `action-runs`
   resource. Syncing a source system into RevOS ("sync HubSpot", "is our
   data up to date?") is the `connections` skill.
