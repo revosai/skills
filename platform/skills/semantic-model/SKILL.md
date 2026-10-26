@@ -232,6 +232,14 @@ cube has none.
   mixing dimension and measure conditions inside the same `and`/`or` group
   isn't supported, keep those separate.
 
+"Not Won or Lost" is one `notEquals` listing both stages, and keeps rows with
+no stage. Take the stage values from a breakdown by the stage dimension first;
+they differ per organization:
+
+```json
+{ "member": "hubspot_deals.deal_stage_name", "operator": "notEquals", "values": ["<won stage>", "<lost stage>"] }
+```
+
 These are Cube's own filters, on `body.query.filters`. The endpoint checks
 their shape (a bare string or number where a condition belongs is rejected
 with a parameter error); member names and values are Cube's to check, and a
@@ -247,21 +255,11 @@ first, then look at the members.
 | Wrong | Right |
 |---|---|
 | `meta` with a `body`: `{"method":"meta","body":{"query":{"fields":"name"}}}` → "takes no request body" | `meta` takes only `params`: `{"method":"meta","params":{"fields":"name,title","pageSize":100}}` |
-| the query under `params`: `{"method":"query","params":{"measures":[…]}}` → "must NOT have additional properties" | `{"method":"query","body":{"query":{"measures":[…]}}}` |
-| `body` without the wrapper: `{"body":{"measures":[…]}}` → "must have required property 'query'" | `{"body":{"query":{"measures":[…]}}}` |
-| a measure in `dimensions` (or a dimension in `measures`) → "not found for path", although the member exists | `meta` lists each member under `measures` or `dimensions`; put it where `meta` has it |
-| a member `meta` does not list (`hubspot_deals.amount`, `hubspot_deals.email`) → "not found for path" | read the cube's `meta` and copy the member name |
+| the query not in `body.query`: `{"method":"query","params":{"measures":[…]}}` → "must NOT have additional properties", or `{"body":{"measures":[…]}}` → "must have required property 'query'" | `{"method":"query","body":{"query":{"measures":[…]}}}` |
+| a measure in `dimensions` (or a dimension in `measures`), or a member `meta` does not list → "not found for path" | `meta` lists each member under `measures` or `dimensions`; copy the name and put it where `meta` has it |
 | `{"not": {…}}` → `"not" is not allowed` | negate with the operator: `notEquals`, `notIn`, `notContains`, `notSet` |
-| `{"member":"x"}`, or `{"operator":"equals","values":["a"]}` → "must have required property 'operator'" | every condition has `member` and `operator`; `values` is an array |
-| `{"operator":"notSet","values":[]}` | `{"member":"x","operator":"notSet"}` — `set` / `notSet` take no `values` |
-
-"Not Won or Lost" is one `notEquals` listing both stages (rows with no stage
-are kept). Take the values from a stage-dimension breakdown first; stage names
-differ per organization:
-
-```json
-{ "member": "hubspot_deals.deal_stage_name", "operator": "notEquals", "values": ["Won (Commercial Sales)", "Lost (Commercial Sales)"] }
-```
+| `{"member":"x"}` → "must have required property 'operator'"; `{"operator":"equals","values":["a"]}` → same for 'member' | every condition has `member` and `operator`; `values` is an array |
+| `{"member":"x","operator":"notSet","values":[]}` | `{"member":"x","operator":"notSet"}` — `set` / `notSet` take no `values` |
 
 ### Row limits
 
