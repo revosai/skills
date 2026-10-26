@@ -20,11 +20,13 @@ signed in. One read says who that is.
 
 ## The call
 
+**Always pass `method: "me"`.** Without it the call fails with "Resource users
+does not support list. It supports: me." The resource has no list and no read
+by id.
+
 ```json
 api_read { "resource": "users", "method": "me" }
 ```
-
-Always with `method: "me"`; the resource has no list and no read by id.
 
 ```json
 {
