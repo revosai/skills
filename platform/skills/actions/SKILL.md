@@ -29,7 +29,8 @@ Three things share the name, and telling them apart is most of the work:
 - An **action run** is one execution of one action column against one row.
   A run is stored once an attempt finishes, so its status is always
   `COMPLETED` or `FAILED` (the API's enum lists `ACTIVE`, `DELAYED`,
-  `WAITING` too, but no run is saved with them). Runs are kept for 14 days.
+  `WAITING` too, but nothing saves a run with them: a run in flight is not
+  in the list yet). Runs are kept for 14 days; a daily job removes older ones.
 
 You reach them through the RevOS MCP server's generic tools:
 
@@ -40,6 +41,7 @@ You reach them through the RevOS MCP server's generic tools:
 | `api_read { "resource": "actions", "id": "<action id>", "method": "errorInstructions" }` | what this organization wrote about that action's errors |
 | `api_read { "resource": "action-runs", "params": { … } }` | list runs: `filter`, `orderBy`, `fields`, `pageSize` |
 | `api_read { "resource": "action-runs", "id": "<run id>" }` | one run, with its `input` and `result` |
+| `api_read { "resource": "action-runs", "params": { …, "latestPerObject": true } }` | the latest run of each record: open errors and their count — see [How many records are failing](#how-many-records-are-failing) |
 | `api_write { "resource": "action-runs", "data": { "tableId": "…", "columnId": "…" } }` | run an action column — see [references/run.md](references/run.md) first |
 
 The calls in this skill are complete as written: go straight to them.
@@ -89,7 +91,10 @@ api_read { "resource": "action-runs",
 ```
 
 `modelId` is the table's id. Narrow with `columnId` or `objectId` when you
-know them.
+know them. This is a list of failed _runs_, which is not a list of failing
+records: a record that failed on every retry shows up once per retry, and one
+a later run fixed is still in it. For "which records are failing" or "how
+many", count as [below](#how-many-records-are-failing).
 
 **Read the run** by id. One call, and it carries the spine as well as both
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
@@ -141,6 +146,49 @@ diagnose the fresh failure.
 missing, empty or malformed, or the user asks where a value should have
 come from — go on to [references/debug.md](references/debug.md): the
 mapping, the lineage, and how to say where the fault is.
+
+## How many records are failing
+
+"How many deals have a sync error?" asks for the state now, not for what
+failed along the way. An **open sync error** is a record whose _latest_ run
+of an action column failed; a later `COMPLETED` run closes it. Count
+distinct records (`objectId`), never failed runs: a record fails again on
+every retry (100 failed runs on one page were 4 deals, one of which had
+succeeded since), so a count of runs overstates the problem and names
+records that are already fixed.
+
+```json
+api_read { "resource": "action-runs",
+           "params": { "filter": "modelId == \"<table id>\" && columnId == \"<column id>\" && status == \"FAILED\"",
+                       "latestPerObject": true, "pageSize": 1, "fields": "objectId" } }
+```
+
+- The number is `metadata.total`, the count of records. It does not depend
+  on `pageSize`, and `data.length` is not it.
+- `filter` must hold `modelId == "<table id>"` as a top-level `&&` term, or
+  the API answers 400. Drop the `columnId` term for every action column of
+  the table. Use the column's current id; a run keeps the `columnId` it ran
+  with, so a column that was replaced since splits its history in two.
+  There is no `actionId` in this filter: use `columnId`.
+- To list the records, raise `pageSize` (at most 100) and follow
+  `metadata.nextPageToken` as `params.pageToken`. Keep `fields` narrow, and
+  read `result` only for the records you explain (it is large). With
+  `latestPerObject`, `createdAt >= X` means "latest run is since X"; it does
+  not rewind to the state at X.
+- Without `latestPerObject` the same call answers too, with runs, not
+  records. Don't count that way.
+
+Say what the number is: "N records whose latest run failed". When you
+show or read only part of the list (one page, or a list you cut), say how
+many you read and that the total is `metadata.total`; never present a page
+as the total. The same goes for runs listed without `latestPerObject`: say
+how many you read and that there may be more.
+
+Runs are kept 14 days, so what you see is bounded by that. A record whose
+last run failed more than 14 days ago and that has not run since is not in
+the list, and nothing here can tell you about it; a question about history
+("root causes over the last 30 days") can only be answered for the last 14.
+Say so rather than present the window as the whole story.
 
 ## The organization's error instructions
 

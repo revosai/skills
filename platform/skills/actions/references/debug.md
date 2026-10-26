@@ -65,6 +65,15 @@ one, _that_ error is the root cause. Diagnose it as its own run: when it
 belongs to a different action, read that action's `errorInstructions` and
 use those, not this one's.
 
+## Many records failing at once
+
+When the question is "why are these deals failing" and the count in SKILL.md
+is more than a handful, don't read a run per record. List the open errors
+(`latestPerObject`) without payloads, read `result` for a few of them, and
+group by `metadata.error.message`. Say how many records you read out of
+`metadata.total`: a cause seen on 5 of 50 records is a sample of the 50, not
+a count of how many have it.
+
 ## Before you propose a fix
 
 Check the recommendation against the organization's error instructions you
