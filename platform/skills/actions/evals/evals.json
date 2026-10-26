@@ -1,6 +1,6 @@
 {
   "skill_name": "actions",
-  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` lacks the owner-email key that `config.input` maps from `{{col_owner_email}}` (the column was empty for that row). The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7, 8, 10 and 11: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs. The Globex expansion deal is a row of crm_deals (its primary key is crm_deals.id). The deal 'Initech pilot' is a row of crm_deals and has no action runs. The deal 'Hooli launch' has no action runs and is not in crm_deals until the two crm_ connections have synced, after which it is. The deal 'Umbrella upsell' is a row of crm_deals with one COMPLETED run of sync_to_erp. The deal 'Pied Piper renewal' has no action runs and is not in crm_deals, before or after the crm_ connections sync.",
+  "_note": "Run these against a sandbox org, never production: eval 4 starts an action run, which writes to whatever system the action is connected to. Fixture: table Deals has an action column `sync_to_erp` whose `config.input` maps `{{col_amount}}` and `{{col_owner_email}}`; `col_owner_email` reads from a stream `model_stream_<Owners table id with - as _>___local`. Two FAILED runs of that column exist. The newer one (object 'Acme renewal') is fully explained by its own result: the target system rejected the credentials, `error.isUnrecoverable` is true. The older one (object 'Globex expansion') failed with 'Please enter value(s) for: Owner email', and its `input` lacks the owner-email key that `config.input` maps from `{{col_owner_email}}` (the column was empty for that row). The org has error instructions at two breadths, both returned by `errorInstructions` on that action: the integration-level text says fixes to owner data are made in the CRM and reach RevOS with the next sync within 1-2 hours; the action-level text maps 'Please enter value(s) for: Owner email' to 'the deal owner has no email in the CRM'. For evals 7, 8, 10 and 11: the source system is called CRM; two active connections have the prefix `crm_` (`CRM` and `CRM associations`) and one inactive (`CRM archive`); an unrelated active connection has the prefix `erp_`. The Deals table's first stream is `crm_deals`, and so is that of a second table, `Deals (test)`, which has its own action column. The deal 'Initech pilot' exists in the CRM and has no action runs. The Globex expansion deal is a row of crm_deals (its primary key is crm_deals.id). The deal 'Initech pilot' is a row of crm_deals and has no action runs. The deal 'Hooli launch' has no action runs and is not in crm_deals until the two crm_ connections have synced, after which it is. The deal 'Umbrella upsell' is a row of crm_deals with one COMPLETED run of sync_to_erp. The deal 'Pied Piper renewal' has no action runs and is not in crm_deals, before or after the crm_ connections sync. For evals 12 and 13, a separate table Invoices with one action column `sync_invoice` (the runs above belong to Deals): its runs, newest per invoice: 6 invoices have a FAILED latest run; 3 more have a FAILED run followed by a COMPLETED one; one of the 6 failed 4 times in a row. In all the table has 20 FAILED runs, for 9 invoices. Eval 13 asks for the first 3 of those 6 invoices.",
   "evals": [
     {
       "id": 1,
@@ -162,6 +162,36 @@
         "No api_write on action-runs",
         "Reply asks the user to check the deal's id",
         "No api_read on action-runs"
+      ]
+    },
+    {
+      "id": 12,
+      "eval_name": "open-errors-count",
+      "prompt": "How many invoices currently have an open sync error in the Invoices table?",
+      "expected_output": "Counts records whose latest run failed, not failed runs: one api_read on action-runs with a filter on the Invoices table's id (`modelId`) and status FAILED (with or without the `sync_invoice` column), `latestPerObject` true, `pageSize` 1 and `fields` objectId. Answers 6 from `metadata.total`, says these are invoices whose latest run failed (a later successful run closes an error), and doesn't answer 20 or 9.",
+      "files": [],
+      "expectations": [
+        "Called api_read on action-runs with latestPerObject true",
+        "The filter has modelId equal to the Invoices table's id as a top-level && term, and status == \"FAILED\"",
+        "Took the number from metadata.total, not from the length of data",
+        "Reply says 6",
+        "Reply says the count is of invoices (records) whose latest run failed, or that a later successful run closes an error",
+        "Reply does not give 20 or 9 as the answer",
+        "Made no more than 2 api_read calls on action-runs"
+      ]
+    },
+    {
+      "id": 13,
+      "eval_name": "open-errors-one-page",
+      "prompt": "Which invoices are failing the sync right now? Show me the first 3.",
+      "expected_output": "Lists the records whose latest run failed with latestPerObject, `pageSize` 3 and `fields` without `input` or `result`, and names the 3 invoices. Says they are 3 of a total of 6 records (from `metadata.total`) and that more follow, rather than presenting the page as everything.",
+      "files": [],
+      "expectations": [
+        "Called api_read on action-runs with latestPerObject true and pageSize 3",
+        "The list call had `fields` and no payloads (neither input nor result)",
+        "Reply names the 3 invoices on the page",
+        "Reply says there are 6 in all, or that the list is cut and more exist",
+        "Reply does not present the 3 as the total"
       ]
     }
   ]

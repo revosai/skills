@@ -5,11 +5,11 @@ description: >
   performs per table row (sync a company to NetSuite, enrich a contact, push
   a deal to HubSpot) — and their runs, through the RevOS MCP server. Use this
   whenever something failed, did not sync, or came out wrong ("why didn't
-  this deal reach NetSuite?", "the sync is red", "what does this error
-  mean?"), when the user wants to see which actions exist or what an action
-  column did, wants an action run or re-run for some or all rows, or wants
-  one record synced right now from an id or a link ("sync this deal",
-  "push this company now") — even if they never say the word "action".
+  this deal reach NetSuite?", "the sync is red", "how many deals have a
+  sync error?", "what does this error mean?"), when the user wants to see
+  which actions exist or what an action column did, wants an action run or
+  re-run for some or all rows, or wants one record synced right now from an
+  id or a link ("sync this deal", "push this company now") — even if they never say the word "action".
   Read it before the first api_read or api_write on the `action-runs`
   resource. Syncing a source system into RevOS ("sync HubSpot", "is our
   data up to date?") is the `connections` skill.
@@ -29,7 +29,8 @@ Three things share the name, and telling them apart is most of the work:
 - An **action run** is one execution of one action column against one row.
   A run is stored once an attempt finishes, so its status is always
   `COMPLETED` or `FAILED` (the API's enum lists `ACTIVE`, `DELAYED`,
-  `WAITING` too, but no run is saved with them). Runs are kept for 14 days.
+  `WAITING` too, but nothing saves a run with them: a run in flight is not
+  in the list yet). Runs are kept for 14 days; a daily job removes older ones.
 
 You reach them through the RevOS MCP server's generic tools:
 
@@ -40,6 +41,7 @@ You reach them through the RevOS MCP server's generic tools:
 | `api_read { "resource": "actions", "id": "<action id>", "method": "errorInstructions" }` | what this organization wrote about that action's errors |
 | `api_read { "resource": "action-runs", "params": { … } }` | list runs: `filter`, `orderBy`, `fields`, `pageSize` |
 | `api_read { "resource": "action-runs", "id": "<run id>" }` | one run, with its `input` and `result` |
+| `api_read { "resource": "action-runs", "params": { …, "latestPerObject": true } }` | the latest run of each record: open errors and their count — see [How many records are failing](#how-many-records-are-failing) |
 | `api_write { "resource": "action-runs", "data": { "tableId": "…", "columnId": "…" } }` | run an action column — see [references/run.md](references/run.md) first |
 
 The calls in this skill are complete as written: go straight to them.
@@ -89,7 +91,10 @@ api_read { "resource": "action-runs",
 ```
 
 `modelId` is the table's id. Narrow with `columnId` or `objectId` when you
-know them.
+know them. This lists failed _runs_, not failing records: a record that
+failed on every retry shows up once per retry, and one a later run fixed is
+still in it. For "which records are failing" or "how many", use
+[below](#how-many-records-are-failing).
 
 **Read the run** by id. One call, and it carries the spine as well as both
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
@@ -141,6 +146,48 @@ diagnose the fresh failure.
 missing, empty or malformed, or the user asks where a value should have
 come from — go on to [references/debug.md](references/debug.md): the
 mapping, the lineage, and how to say where the fault is.
+
+## How many records are failing
+
+"How many deals have a sync error?" asks for the state now, not for what
+failed along the way. An **open sync error** is a record whose _latest_ run
+of an action column failed; a later `COMPLETED` run closes it. Count
+records (`objectId`), never failed runs: a record fails again on every
+retry (100 failed runs on one page were 4 deals, one of which had succeeded
+since), so counting runs overstates the problem and names fixed records.
+
+```json
+api_read { "resource": "action-runs",
+           "params": { "filter": "modelId == \"<table id>\" && columnId == \"<column id>\" && status == \"FAILED\"",
+                       "latestPerObject": true, "pageSize": 1, "fields": "objectId" } }
+```
+
+- The number is `metadata.total`, the count of records. It does not depend
+  on `pageSize`, and `data.length` is not it.
+- `filter` must hold `modelId == "<table id>"` as a top-level `&&` term, or
+  the API answers 400. There is no `actionId` here: use `columnId`, the
+  column's current id (a run keeps the `columnId` it ran with, so a column
+  that was replaced splits its history in two). Drop the `columnId` term to
+  cover every action column of the table; a record that failed in two
+  columns then counts twice.
+- To list the records, raise `pageSize` (at most 100) and follow
+  `metadata.nextPageToken` as `params.pageToken`. Keep `fields` narrow
+  (`objectId,objectName`), and read `result` only for the records you
+  explain (it is large).
+- With `latestPerObject`, `createdAt >= X` means "latest run is since X"; it
+  does not rewind to the state at X. Without it the same call returns runs,
+  not records: don't count that way.
+
+Say what the number is: "N records whose latest run failed". When you show
+or read only part of a list (one page, or a list you cut), say how many you
+read and that the total is `metadata.total`; for runs listed without
+`latestPerObject`, that there may be more. Never present a page as the total.
+
+Runs are kept 14 days, so a record whose last run failed longer ago and has
+not run since is not in the list, and nothing here can tell you about it.
+A question about history ("root causes over the last 30 days") can only be
+answered for the last 14: say so rather than present the window as the
+whole story.
 
 ## The organization's error instructions
 
