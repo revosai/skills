@@ -5,9 +5,9 @@ description: >
   performs per table row (sync a company to NetSuite, enrich a contact, push
   a deal to HubSpot) — and their runs, through the RevOS MCP server. Use this
   whenever something failed, did not sync, or came out wrong ("why didn't
-  this deal reach NetSuite?", "the sync is red", "what does this error
-  mean?"), when the user wants to see which actions exist or what an action
-  column did, wants an action run or re-run for some or all rows, or wants
+  this deal reach NetSuite?", "the sync is red", "how many deals have a
+  sync error?", "what does this error mean?"), when the user wants to see
+  which actions exist or what an action column did, wants an action run or re-run for some or all rows, or wants
   one record synced right now from an id or a link ("sync this deal",
   "push this company now") — even if they never say the word "action".
   Read it before the first api_read or api_write on the `action-runs`
@@ -91,10 +91,10 @@ api_read { "resource": "action-runs",
 ```
 
 `modelId` is the table's id. Narrow with `columnId` or `objectId` when you
-know them. This is a list of failed _runs_, which is not a list of failing
-records: a record that failed on every retry shows up once per retry, and one
-a later run fixed is still in it. For "which records are failing" or "how
-many", count as [below](#how-many-records-are-failing).
+know them. This lists failed _runs_, not failing records: a record that
+failed on every retry shows up once per retry, and one a later run fixed is
+still in it. For "which records are failing" or "how many", use
+[below](#how-many-records-are-failing).
 
 **Read the run** by id. One call, and it carries the spine as well as both
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
@@ -152,10 +152,9 @@ mapping, the lineage, and how to say where the fault is.
 "How many deals have a sync error?" asks for the state now, not for what
 failed along the way. An **open sync error** is a record whose _latest_ run
 of an action column failed; a later `COMPLETED` run closes it. Count
-distinct records (`objectId`), never failed runs: a record fails again on
-every retry (100 failed runs on one page were 4 deals, one of which had
-succeeded since), so a count of runs overstates the problem and names
-records that are already fixed.
+records (`objectId`), never failed runs: a record fails again on every
+retry (100 failed runs on one page were 4 deals, one of which had succeeded
+since), so counting runs overstates the problem and names fixed records.
 
 ```json
 api_read { "resource": "action-runs",
@@ -166,29 +165,29 @@ api_read { "resource": "action-runs",
 - The number is `metadata.total`, the count of records. It does not depend
   on `pageSize`, and `data.length` is not it.
 - `filter` must hold `modelId == "<table id>"` as a top-level `&&` term, or
-  the API answers 400. Drop the `columnId` term for every action column of
-  the table. Use the column's current id; a run keeps the `columnId` it ran
-  with, so a column that was replaced since splits its history in two.
-  There is no `actionId` in this filter: use `columnId`.
+  the API answers 400. There is no `actionId` here: use `columnId`, the
+  column's current id (a run keeps the `columnId` it ran with, so a column
+  that was replaced splits its history in two). Drop the `columnId` term to
+  cover every action column of the table; a record that failed in two
+  columns then counts twice.
 - To list the records, raise `pageSize` (at most 100) and follow
-  `metadata.nextPageToken` as `params.pageToken`. Keep `fields` narrow, and
-  read `result` only for the records you explain (it is large). With
-  `latestPerObject`, `createdAt >= X` means "latest run is since X"; it does
-  not rewind to the state at X.
-- Without `latestPerObject` the same call answers too, with runs, not
-  records. Don't count that way.
+  `metadata.nextPageToken` as `params.pageToken`. Keep `fields` narrow
+  (`objectId,objectName`), and read `result` only for the records you
+  explain (it is large).
+- With `latestPerObject`, `createdAt >= X` means "latest run is since X"; it
+  does not rewind to the state at X. Without it the same call returns runs,
+  not records: don't count that way.
 
-Say what the number is: "N records whose latest run failed". When you
-show or read only part of the list (one page, or a list you cut), say how
-many you read and that the total is `metadata.total`; never present a page
-as the total. The same goes for runs listed without `latestPerObject`: say
-how many you read and that there may be more.
+Say what the number is: "N records whose latest run failed". When you show
+or read only part of a list (one page, or a list you cut), say how many you
+read and that the total is `metadata.total`; for runs listed without
+`latestPerObject`, that there may be more. Never present a page as the total.
 
-Runs are kept 14 days, so what you see is bounded by that. A record whose
-last run failed more than 14 days ago and that has not run since is not in
-the list, and nothing here can tell you about it; a question about history
-("root causes over the last 30 days") can only be answered for the last 14.
-Say so rather than present the window as the whole story.
+Runs are kept 14 days, so a record whose last run failed longer ago and has
+not run since is not in the list, and nothing here can tell you about it.
+A question about history ("root causes over the last 30 days") can only be
+answered for the last 14: say so rather than present the window as the
+whole story.
 
 ## The organization's error instructions
 

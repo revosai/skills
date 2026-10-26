@@ -67,12 +67,11 @@ use those, not this one's.
 
 ## Many records failing at once
 
-When the question is "why are these deals failing" and the count in SKILL.md
-is more than a handful, don't read a run per record. List the open errors
-(`latestPerObject`) without payloads, read `result` for a few of them, and
-group by `metadata.error.message`. Say how many records you read out of
-`metadata.total`: a cause seen on 5 of 50 records is a sample of the 50, not
-a count of how many have it.
+When "why are these deals failing" covers more than a handful of
+[open errors](../SKILL.md#how-many-records-are-failing), don't read a run per
+record. List them without payloads, read `result` for a few, and group by
+`metadata.error.message`. Say how many you read out of `metadata.total`: a
+cause seen on 5 of 50 records is a sample, not a count of how many have it.
 
 ## Before you propose a fix
 
