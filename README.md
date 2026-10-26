@@ -41,6 +41,7 @@ registered via [`.mcp.json`](platform/.mcp.json).
 | [`connections`](platform/skills/connections) | See and sync the connections that pull source systems (HubSpot, NetSuite) into RevOS: which ones belong to a system, whether the data is up to date, syncing them now and waiting for the result, and deleting one on an explicit ask. |
 | [`metrics`](platform/skills/metrics) | Find a metric (a measure of the semantic model) by what it means, see its aggregation and format and which tables, segments and dashboard cards use it, and compute its value scoped by a segment or conditions and broken down by a dimension — the same number a dashboard card shows. Reads only. |
 | [`dashboards`](platform/skills/dashboards) | Read, build, and fix the org's dashboards of metric cards: add a card scoped by a segment or its own conditions and optionally broken down, reorder or move cards, and diagnose a card the app shows as unavailable. Confirms before deleting a dashboard and every card on it. |
+| [`users`](platform/skills/users) | Find out who is asking (their email, name and role) and answer "my deals", "my pipeline", "assigned to me" by matching their email to the owner in the semantic model — without answering for anyone else when nothing matches. |
 
 ## Install
 

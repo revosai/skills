@@ -1,0 +1,70 @@
+{
+  "skill_name": "users",
+  "_note": "Needs an api with GET /users/me (revosai/api#1859). Fixture: the asker is Ada Lovelace, `ada@example.com`, role `member`, acting through an agent (`actor` is a machine). The semantic model has `hubspot_deals` (measures `count`, `amount`; dimension `dealname`, `dealstage`) joined to `hubspot_owners` (dimensions `email`, `first_name`, `last_name`). Ada owns 3 open deals under `ada@example.com`. For eval 3 only, `hubspot_owners` has Ada as `Ada.Lovelace@Example.com` and no exact lowercase match. For eval 4 only, the asker is Bob Smith, `bob@example.com`, who is not in `hubspot_owners`.",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "my-deals",
+      "prompt": "Show me my open deals.",
+      "expected_output": "Reads users.me, finds the owner email in the semantic model's meta, queries hubspot_deals filtered by hubspot_owners.email equals ada@example.com, lists the 3 deals, and says it matched on ada@example.com.",
+      "files": [],
+      "expectations": [
+        "Called api_read on users with method me",
+        "Read cubes meta before querying",
+        "The cubes query filters hubspot_owners.email by ada@example.com",
+        "Did not run an unfiltered deals query and present it as the user's",
+        "Reply lists 3 deals and says it matched on the email"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "who-am-i",
+      "prompt": "Who am I in RevOS and what can I do?",
+      "expected_output": "Reads users.me once and answers with the name and the role (member), explaining the role as what they may do in RevOS. Does not present the agent as the user.",
+      "files": [],
+      "expectations": [
+        "Called api_read on users with method me exactly once",
+        "Reply names Ada Lovelace",
+        "Reply says the role is member",
+        "Reply does not say the user is the agent or a machine"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "email-case-mismatch",
+      "prompt": "How big is my pipeline?",
+      "expected_output": "The exact filter finds nothing; retries with the address's case variant or a case-insensitive match before concluding, finds Ada's deals, and reports the amount with what it matched on.",
+      "files": [],
+      "expectations": [
+        "Called api_read on users with method me",
+        "Ran more than one owner filter before saying there is no match",
+        "Did not report zero or 'no deals' as the final answer",
+        "Reply says what it matched on"
+      ]
+    },
+    {
+      "id": 4,
+      "eval_name": "owner-not-found",
+      "prompt": "What are my deals this quarter?",
+      "expected_output": "Bob is not among the owners. Says no HubSpot owner matched bob@example.com, offers to match by name or asks which owner to use, and does not answer with every deal.",
+      "files": [],
+      "expectations": [
+        "Called api_read on users with method me",
+        "Did not present an unfiltered deals list or total as Bob's",
+        "Reply says no owner matched the email",
+        "Reply offers a name match or asks which owner to filter by"
+      ]
+    },
+    {
+      "id": 5,
+      "eval_name": "colleague-lookup",
+      "prompt": "What's Bob's email address?",
+      "expected_output": "Doesn't try to read another user from users (no list, no id). Answers from the owners cube if Bob is there, or says looking up colleagues in RevOS isn't possible.",
+      "files": [],
+      "expectations": [
+        "No api_read on users with an id or without method me",
+        "Reply does not invent an address"
+      ]
+    }
+  ]
+}
