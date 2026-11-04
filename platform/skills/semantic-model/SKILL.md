@@ -191,7 +191,9 @@ a series.
 
 **`timeDimensions[].dateRange`** — a relative string (`"last quarter"`, `"last
 12 months"`, `"this month"`) or an explicit `["2026-01-01", "2026-03-31"]`
-pair of ISO dates.
+pair of ISO dates. Only `dateRange` takes relative strings: the date operators
+in `filters` (`inDateRange`, `notInDateRange`, `beforeDate`, …) take ISO dates,
+so work those out from today's date first.
 
 **Period over period** ("this month vs. last month") — run one query per
 range, each with its own `dateRange`, and compare them yourself. Avoid
@@ -260,6 +262,7 @@ first, then look at the members.
 | `{"not": {…}}` → `"not" is not allowed` | negate with the operator: `notEquals`, `notIn`, `notContains`, `notSet` |
 | `{"member":"x"}` → "must have required property 'operator'"; `{"operator":"equals","values":["a"]}` → same for 'member' | every condition has `member` and `operator`; `values` is an array |
 | `{"member":"x","operator":"notSet","values":[]}` | `{"member":"x","operator":"notSet"}` — `set` / `notSet` take no `values` |
+| a relative string in a date filter: `{"member":"x","operator":"notInDateRange","values":["from 30 days ago to now"]}` → "Invalid timestamp: 'Invalid date'" | ISO dates worked out from today's date: `{"member":"x","operator":"notInDateRange","values":["2026-10-05","2026-11-04"]}`; or, when the range is the query's period, `timeDimensions[].dateRange`, which does take `"last 30 days"` |
 
 ### Row limits
 
