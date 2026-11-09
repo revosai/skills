@@ -100,12 +100,14 @@ still in it. For "which records are failing" or "how many", use
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
 `status`, `attemptsMade`, `input` and `result`.
 
-**Read the organization's error instructions** for the run's `actionId`.
-This is the next call after the run, every time, however clear the error
-already looks: `api_read` on `actions` with that id and
-`method: "errorInstructions"`, described
-[below](#the-organizations-error-instructions). They often map the error
-message straight to its cause and fix, and say who fixes it.
+**Read what the organization wrote about the action's errors.** If its
+instructions or one of its own skills cover the errors of the run's
+`actionId`, read those and skip `errorInstructions`. Otherwise read the
+organization's error instructions: the next call after the run, every
+time, however clear the error already looks: `api_read` on `actions` with
+that id and `method: "errorInstructions"`, described
+[below](#the-organizations-error-instructions). Either way they often map the
+error message straight to its cause and fix, and say who fixes it.
 
 **Where the error lives.** There is no separate error column. `result`
 holds the whole run result, a union discriminated by `metadata.success`. On
@@ -193,8 +195,15 @@ whole story.
 
 Organizations write down what their actions' errors mean and how they are
 fixed: what a particular NetSuite error really means for them, who fixes
-what, how a link to their CRM is built. Read them once for each failed run
-you diagnose, by the run's `actionId`:
+what, how a link to their CRM is built.
+
+Some keep this in their own skills instead, and their instructions say which
+skill holds which action's errors. For those actions the organization's
+skills are the source: don't read `errorInstructions`, and if you have its
+texts anyway, go by the organization's skills where they differ.
+
+Otherwise read the error instructions once for each failed run you
+diagnose, by the run's `actionId`:
 
 ```json
 api_read { "resource": "actions", "id": "<the run's actionId>", "method": "errorInstructions" }
