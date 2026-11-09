@@ -95,6 +95,14 @@ failed on every retry shows up once per retry, and one a later run fixed is
 still in it. For "which records are failing" or "how many", use
 [below](#how-many-records-are-failing).
 
+Before you explain one of these failures or advise a fix, check that the
+record is still failing: a later `COMPLETED` run in the same column means it
+was fixed, so say it was fixed and when, and don't recommend a fix or a
+re-run. For "which records failed most recently", list records rather than
+runs: the [latest-run call below](#how-many-records-are-failing) with
+`"orderBy": "createdAt desc"` gives the records whose latest run failed,
+newest first.
+
 **Read the run** by id. One call, and it carries the spine as well as both
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
 `status`, `attemptsMade`, `input` and `result`.
