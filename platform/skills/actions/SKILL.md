@@ -99,12 +99,10 @@ still in it. For "which records are failing" or "how many", use
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
 `status`, `attemptsMade`, `input` and `result`.
 
-**Read what the organization wrote about the action's errors.** That lives
-in the organization's own skills, described
-[below](#what-the-organization-wrote-about-its-errors). When one of them
-covers the run's action or its integration, load it right after reading the
-run, however clear the error already looks: it often maps the error message
-straight to its cause and fix, and says who fixes it.
+**Load the organization's skill for the action** — described
+[below](#what-the-organization-wrote-about-its-errors) — right after reading
+the run, however clear the error already looks. If none covers it, carry on
+from the run.
 
 **Where the error lives.** There is no separate error column. `result`
 holds the whole run result, a union discriminated by `metadata.success`. On
@@ -127,9 +125,9 @@ Re-running unchanged fails the same way; it can work once the cause is
 fixed.
 
 A large share of failures are fully explained right here — credentials the
-target system rejected, a permission, a validation message
-that already names the field and the reason. When `result`, read together
-with the organization's skill for the action, says something the user can act on,
+target system rejected, a permission, a validation message that already
+names the field and the reason. When `result`, read together with the
+organization's skill for the action, says something the user can act on,
 **that is the answer**: quote it, say what to do, stop.
 
 **When the id doesn't resolve.** `api_read` by id answers `data: null`
@@ -193,16 +191,15 @@ whole story.
 Organizations write down what their actions' errors mean and how they are
 fixed: what a particular NetSuite error really means for them, who fixes
 what, how a link to their CRM is built. They keep it in their own skills,
-which you have next to this one under their own names; the organization's
-instructions may say which skill holds which action's errors.
+which you have next to this one under their own names. The one for a run is
+the skill whose description covers the run's action or its integration;
+load it once for each failed run you diagnose.
 
-For each failed run you diagnose, load the skill that covers the run's
-action — by its description, its integration, or what the instructions say.
-It is where a convention that makes your obvious recommendation wrong
-lives: when it gives wording, a link format, or an owner for the fix, use
-theirs. If no skill covers the action, the organization wrote nothing for
-it: carry on from the run. There is no API call that returns this
-knowledge; don't look for one.
+It often maps the error message straight to its cause and fix, and says who
+fixes it. It is also where a convention that makes your obvious
+recommendation wrong lives: when it gives wording, a link format, or an
+owner for the fix, use theirs. If no skill covers the action, the
+organization wrote nothing for it: carry on from the run.
 
 ## Running an action
 
