@@ -62,8 +62,9 @@ table's id). `objectName` isn't filterable: filter by `objectId` when the
 related record's id is in the run's `input`, otherwise page through and
 match `objectName`. If it has
 one, _that_ error is the root cause. Diagnose it as its own run: when it
-belongs to a different action, read that action's `errorInstructions` and
-use those, not this one's.
+belongs to a different action, read what the organization wrote about that
+action's errors (SKILL.md: the organization's skill for that action) and
+use that, not this one's.
 
 ## Many records failing at once
 
@@ -75,8 +76,8 @@ cause seen on 5 of 50 records is a sample, not a count of how many have it.
 
 ## Before you propose a fix
 
-Check the recommendation against the organization's error instructions you
-read with the run (SKILL.md). They may turn your obvious fix around.
+Check the recommendation against what the organization wrote about the
+action's errors, read with the run (SKILL.md). They may turn your obvious fix around.
 
 ## Where to land the blame
 
