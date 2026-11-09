@@ -118,4 +118,4 @@ that runs the whole table.
 Whether the record was already in RevOS, which connections you synced (if
 any) and that they succeeded, which table and action column ran for the
 record, and how the run ended. If it failed, diagnose that run as SKILL.md
-describes — the run, then its action's error instructions.
+describes — the run, then what the organization wrote about its action's errors.
