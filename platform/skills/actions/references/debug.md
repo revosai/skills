@@ -63,8 +63,8 @@ related record's id is in the run's `input`, otherwise page through and
 match `objectName`. If it has
 one, _that_ error is the root cause. Diagnose it as its own run: when it
 belongs to a different action, read what the organization wrote about that
-action's errors (SKILL.md: its own skill, or `errorInstructions`) and use
-those, not this one's.
+action's errors (SKILL.md: the organization's skill for that action) and
+use that, not this one's.
 
 ## Many records failing at once
 

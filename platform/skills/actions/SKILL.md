@@ -38,7 +38,6 @@ You reach them through the RevOS MCP server's generic tools:
 |---|---|
 | `api_read { "resource": "actions", "params": { "fields": "id,name,integrationName" } }` | the catalogue; add `"onlyUsed": "true"` for the ones a table uses |
 | `api_read { "resource": "actions", "id": "<action id>" }` | one action: `name`, `description`, `integrationName` |
-| `api_read { "resource": "actions", "id": "<action id>", "method": "errorInstructions" }` | what this organization wrote about that action's errors |
 | `api_read { "resource": "action-runs", "params": { … } }` | list runs: `filter`, `orderBy`, `fields`, `pageSize` |
 | `api_read { "resource": "action-runs", "id": "<run id>" }` | one run, with its `input` and `result` |
 | `api_read { "resource": "action-runs", "params": { …, "latestPerObject": true } }` | the latest run of each record: open errors and their count — see [How many records are failing](#how-many-records-are-failing) |
@@ -100,14 +99,12 @@ still in it. For "which records are failing" or "how many", use
 payloads: `actionId`, `columnId`, `modelId`, `objectId`, `objectName`,
 `status`, `attemptsMade`, `input` and `result`.
 
-**Read what the organization wrote about the action's errors.** If its
-instructions or one of its own skills cover the errors of the run's
-`actionId`, read those and skip `errorInstructions`. Otherwise read the
-organization's error instructions: the next call after the run, every
-time, however clear the error already looks: `api_read` on `actions` with
-that id and `method: "errorInstructions"`, described
-[below](#the-organizations-error-instructions). Either way they often map the
-error message straight to its cause and fix, and say who fixes it.
+**Read what the organization wrote about the action's errors.** That lives
+in the organization's own skills, described
+[below](#what-the-organization-wrote-about-its-errors). When one of them
+covers the run's action or its integration, load it right after reading the
+run, however clear the error already looks: it often maps the error message
+straight to its cause and fix, and says who fixes it.
 
 **Where the error lives.** There is no separate error column. `result`
 holds the whole run result, a union discriminated by `metadata.success`. On
@@ -132,7 +129,7 @@ fixed.
 A large share of failures are fully explained right here — credentials the
 target system rejected, a permission, a validation message
 that already names the field and the reason. When `result`, read together
-with the organization's instructions, says something the user can act on,
+with the organization's skill for the action, says something the user can act on,
 **that is the answer**: quote it, say what to do, stop.
 
 **When the id doesn't resolve.** `api_read` by id answers `data: null`
@@ -191,38 +188,21 @@ A question about history ("root causes over the last 30 days") can only be
 answered for the last 14: say so rather than present the window as the
 whole story.
 
-## The organization's error instructions
+## What the organization wrote about its errors
 
 Organizations write down what their actions' errors mean and how they are
 fixed: what a particular NetSuite error really means for them, who fixes
-what, how a link to their CRM is built.
+what, how a link to their CRM is built. They keep it in their own skills,
+which you have next to this one under their own names; the organization's
+instructions may say which skill holds which action's errors.
 
-Some keep this in their own skills instead, and their instructions say which
-skill holds which action's errors. For those actions the organization's
-skills are the source: don't read `errorInstructions`, and if you have its
-texts anyway, go by the organization's skills where they differ.
-
-Otherwise read the error instructions once for each failed run you
-diagnose, by the run's `actionId`:
-
-```json
-api_read { "resource": "actions", "id": "<the run's actionId>", "method": "errorInstructions" }
-```
-
-It returns three texts, each `null` when nothing was written:
-
-- `global` — applies to every action in this organization;
-- `integration` — every action of this action's integration;
-- `action` — this action alone.
-
-They add up rather than override one another: the action-level text
-assumes you've read the integration-level one.
-
-They are where a convention that makes your obvious recommendation wrong
-lives. When they give wording, a link format, or an owner for the fix, use
-theirs. If all three are `null`, the organization wrote nothing for this
-action; carry on without them. If the read itself is refused, don't retry:
-carry on from the run, and say you couldn't read them.
+For each failed run you diagnose, load the skill that covers the run's
+action — by its description, its integration, or what the instructions say.
+It is where a convention that makes your obvious recommendation wrong
+lives: when it gives wording, a link format, or an owner for the fix, use
+theirs. If no skill covers the action, the organization wrote nothing for
+it: carry on from the run. There is no API call that returns this
+knowledge; don't look for one.
 
 ## Running an action
 
