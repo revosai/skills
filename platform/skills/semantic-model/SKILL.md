@@ -58,8 +58,8 @@ response carries a
 `metadata.nextPageToken`, pass it back as `params.pageToken` for the rest.
 
 The catalogue can surface internal, system-generated cubes alongside the
-business ones you'd expect — a helper cube backing a "latest scores" rollup,
-an internal segment cube, or similar plumbing that exists to support another
+business ones you'd expect — a table's own cube, an internal segment cube,
+or similar plumbing that exists to support another
 cube's joins rather than to be queried directly. RevOS-generated ones are titled `[Table] …` or
 `[Segment] …` (names `model_stream_…___local`, `segment_…`), and views of
 tables are named `model_…`; others stand out by a sparse or missing
@@ -67,6 +67,14 @@ description, or a mechanical-sounding name/title. When a
 search matches both a clean, business-named cube and one of these, describe
 and query the business one unless the question is specifically about the
 internal one.
+
+The exception is a scored table's `[Scores] …` cube
+(`model_stream_…___scores`): query it for anything about a score. It holds
+each record's latest `points` out of `total_points`, its `score` band
+(`low`, `medium`, `high`) and `scored_at`, in all and per group and feature
+(members named after their ids, titled by name), and joins the cube the
+table's rows come from. The table's view has the same members as
+`scores__<member>`.
 
 Then pull the full definition of the cube(s) the question needs, by dropping
 `fields` and filtering to them:

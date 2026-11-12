@@ -18,8 +18,9 @@ types, the dimension with `primaryKey: true`, and `meta.nameDimension` when
 the cube declares one. Note the primary key and the name dimension.
 
 Root a table on the org's own cubes. Skip the system ones: tables' views
-(`model_<id>`), tables' own cubes (`model_stream_…___local`), and static
-segments' cubes (`segment_…`). Ask when the user's words fit two cubes.
+(`model_<id>`), tables' own cubes (`model_stream_…___local`), scored
+tables' scores cubes (`model_stream_…___scores`), and static segments'
+cubes (`segment_…`). Ask when the user's words fit two cubes.
 
 **If the table should hold only some rows** ("the stalled deals"), the rows
 are scoped by a segment, not by the table:
