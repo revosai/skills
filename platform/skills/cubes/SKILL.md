@@ -80,9 +80,8 @@ RevOS generates: a cube per table with stored columns or scores
 (`model_stream_…___local`, titled `[Table] <name>`), one per scored table
 over its latest scores (`model_stream_…___scores`, `[Scores] <name>`), one
 per static segment (`segment_…`, `[Segment] <name>`), and a view per table
-(`model_…`). These
-also add joins onto stored cubes, so a cube's `joins` in `meta` can list
-joins its stored definition doesn't have. An org with no stored cubes still
+(`model_…`). These also add joins onto stored cubes, so a cube's `joins` in
+`meta` can list joins its stored definition doesn't have. An org with no stored cubes still
 shows the generated ones; creating a cube adds to them and removes nothing.
 
 **Are the cubes managed as code?** Some orgs ship cubes from a repo with the
@@ -100,9 +99,9 @@ apply. If the user mentions a repo or the CLI, point them there instead.
   - It adds the cubes RevOS generates itself, which you never write:
     - a cube per table that has stored columns or scores, named
       `model_stream_…___local` (a table that only reads cubes has none);
-    - a cube per scored table, `model_stream_…___scores`: each record's
-      latest points, total points, band and time, in all and per group and
-      feature, joined one-to-one onto the cube the table's rows come from;
+    - a cube per scored table over its latest scores, named
+      `model_stream_…___scores`, joined one-to-one onto the cube the
+      table's rows come from;
     - a cube per static segment, named `segment_…`;
     - a view per table.
 

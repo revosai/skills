@@ -263,41 +263,45 @@ table's default view, check that `meta` still compiles after the edit.
 "Companies whose score fell below 30", "deals where the Engagement group is
 low": a scored table's latest scores are their own cube,
 `model_stream_<table id, - → _>___scores`, titled `[Scores] <table name>`,
-one row per scored record. It exists only while the table has scoring
-features. Its members:
+one row per record scored today or yesterday (UTC). It exists only while
+the table has scoring features. Its members:
 
 | Member | Type | What |
 |---|---|---|
 | `points`, `total_points` | number | the record's points, out of the most it could get |
 | `score` | string | its band: `low`, `medium` or `high` |
 | `scored_at` | time | when it was scored |
-| `group_<group id>_points`, `…_total_points`, `…_score` | | the same for one group of features |
-| `feature_<feature id>_points`, `…_score` | | the same for one feature |
+| `group_<group id, - → _>_points`, `…_total_points`, `…_score` | | the same for one group of features |
+| `feature_<feature id, - → _>_points`, `…_score` | | the same for one feature |
 
-Group and feature members are named after the **id**, not the name, so a
-rename doesn't break the segment; the name is in the member's `title`
-("Revenue group: score", "MRR: points"). Find the one the user means by its
-title in `meta` filtered to the cube — never build a member name from a
-group's or a feature's name. A group with no features has no members.
+Group and feature members are named after the **id**, so a rename doesn't
+break the segment; the name is in the member's `title` ("Revenue group:
+score", "MRR: points"). Find the one the user means by its title in `meta`
+filtered to the cube — never build a member name yourself. A group with no
+features has no members, and deleting a feature or a group deletes its
+members: a segment that names one then fails, and if it scopes a table's
+view, the org's model stops compiling.
 
-- **Root**: the cube the table's rows come from — its first stream (the
-  table's `streams[0].id`), or the table's own cube
-  (`model_stream_…___local`) for a table started from its own rows. Not the
-  scores cube: a record with no score isn't in it.
+- **Root**: the one cube the scores cube joins (its `joins` in `meta`; its
+  description names it too). That is the table's first stream, or its own
+  cube `model_stream_…___local` for a table that stores its own `id`
+  column. Not the scores cube: a record with no recent score isn't in it.
 - **`cubes`**: the root, then `{ "joinPath": "<root>.model_stream_…___scores" }`.
-  The scores cube joins the root directly; check its `joins` in `meta`.
 - **Thresholds are in points**, and `total_points` is the scale. Query the
   distribution (`points` and `total_points`, or a count by `score`) before
   picking a number the user gave as a percentage, and say what it means in
   points.
 - "Low score" without a number usually means `score` `EQUAL` `low`.
 
-The scores are the latest run's, refreshed twice a day (03:00 and 15:00
-UTC) and when someone recomputes the table. A segment on them only changes
-then. To have something happen when a record's score falls — a routine on
-`segment.members.entered` — make it DYNAMIC: a watched segment on the scores
-is evaluated again right after each recompute, and its first evaluation is a
-baseline, so records already below the line don't fire.
+Scores are recomputed twice a day (03:00 and 15:00 UTC) and when someone
+presses *Refresh* on the table in the app; the tools can't trigger it, and
+editing a feature over the API doesn't either, so a new feature's members
+stay empty until then. A DYNAMIC segment picks up new scores at its next
+6-hourly evaluation. To have something happen when a record's score falls —
+a routine on `segment.members.entered` — make it DYNAMIC: a segment a
+routine watches is evaluated again a couple of minutes after each
+recompute, and its first evaluation is a baseline, so records already
+below the line don't fire.
 
 ## Scoping a table's rows with a segment
 
