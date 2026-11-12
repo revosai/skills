@@ -60,13 +60,22 @@ response carries a
 The catalogue can surface internal, system-generated cubes alongside the
 business ones you'd expect — a helper cube backing a "latest scores" rollup,
 an internal segment cube, or similar plumbing that exists to support another
-cube's joins rather than to be queried directly. RevOS-generated ones are titled `[Table] …` or
-`[Segment] …` (names `model_stream_…___local`, `segment_…`), and views of
-tables are named `model_…`; others stand out by a sparse or missing
+cube's joins rather than to be queried directly. RevOS-generated ones are titled `[Table] …`,
+`[Scores] …` or `[Segment] …` (names `model_stream_…___local`,
+`model_stream_…___scores`, `segment_…`), and views of tables are named
+`model_…`; others stand out by a sparse or missing
 description, or a mechanical-sounding name/title. When a
 search matches both a clean, business-named cube and one of these, describe
 and query the business one unless the question is specifically about the
 internal one.
+
+One generated cube is the answer to its own kind of question: a scored
+table's `[Scores] …` cube holds each record's latest points, out of
+`total_points`, its `score` band (`low`, `medium`, `high`) and `scored_at`,
+in all and per group and feature (members named after their ids, titled by
+name). It joins the cube the table's rows come from, so "which companies
+score low" is a query on that cube with a filter on the scores cube. The
+table's view has the same members as `scores__<member>`.
 
 Then pull the full definition of the cube(s) the question needs, by dropping
 `fields` and filtering to them:

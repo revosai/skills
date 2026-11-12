@@ -12,7 +12,9 @@ JSON schema. This page covers what it can't show.
 
 - **`name`**: becomes a warehouse column name, so it must match
   `^[a-zA-Z_][a-zA-Z0-9_]*$`, be unique in the table, and not be `scores`
-  (reserved for scoring output). Put the human label in `displayName`:
+  (reserved for scoring output). Don't start one with `scores__` either:
+  the view gives a scored table's score parts those names, and a column
+  that takes one hides that part from the view. Put the human label in `displayName`:
   `deal_owner_emea` with "Deal owner (EMEA)".
 - **`id`**: omit it for a new column, and the server generates one. Keep it
   unchanged on every existing column. Views, filters, scoring features, and

@@ -84,7 +84,9 @@ cube's `joins`. Never guess a member name — they're per-organization.
 
 Prefer business-named cubes over generated plumbing — helper cubes with a
 sparse or missing description and a mechanical-looking name — unless the
-user is clearly asking about one of those.
+user is clearly asking about one of those. One generated cube is the right
+place for its own kind of condition: a scored table's `[Scores] …` cube for
+anything about a score (see *Segment on a table's scores*).
 
 ### 2. Build `cubes` — the root first, then one entry per other cube you filter on
 
@@ -255,6 +257,47 @@ segment goes back to `PENDING` when its filter or cubes change, and every
 table scoped by it then shows **all** rows until someone presses *Evaluate*
 in the UI — warn the user before such an edit. If the segment scopes a
 table's default view, check that `meta` still compiles after the edit.
+
+## Segment on a table's scores
+
+"Companies whose score fell below 30", "deals where the Engagement group is
+low": a scored table's latest scores are their own cube,
+`model_stream_<table id, - → _>___scores`, titled `[Scores] <table name>`,
+one row per scored record. It exists only while the table has scoring
+features. Its members:
+
+| Member | Type | What |
+|---|---|---|
+| `points`, `total_points` | number | the record's points, out of the most it could get |
+| `score` | string | its band: `low`, `medium` or `high` |
+| `scored_at` | time | when it was scored |
+| `group_<group id>_points`, `…_total_points`, `…_score` | | the same for one group of features |
+| `feature_<feature id>_points`, `…_score` | | the same for one feature |
+
+Group and feature members are named after the **id**, not the name, so a
+rename doesn't break the segment; the name is in the member's `title`
+("Revenue group: score", "MRR: points"). Find the one the user means by its
+title in `meta` filtered to the cube — never build a member name from a
+group's or a feature's name. A group with no features has no members.
+
+- **Root**: the cube the table's rows come from — its first stream (the
+  table's `streams[0].id`), or the table's own cube
+  (`model_stream_…___local`) for a table started from its own rows. Not the
+  scores cube: a record with no score isn't in it.
+- **`cubes`**: the root, then `{ "joinPath": "<root>.model_stream_…___scores" }`.
+  The scores cube joins the root directly; check its `joins` in `meta`.
+- **Thresholds are in points**, and `total_points` is the scale. Query the
+  distribution (`points` and `total_points`, or a count by `score`) before
+  picking a number the user gave as a percentage, and say what it means in
+  points.
+- "Low score" without a number usually means `score` `EQUAL` `low`.
+
+The scores are the latest run's, refreshed twice a day (03:00 and 15:00
+UTC) and when someone recomputes the table. A segment on them only changes
+then. To have something happen when a record's score falls — a routine on
+`segment.members.entered` — make it DYNAMIC: a watched segment on the scores
+is evaluated again right after each recompute, and its first evaluation is a
+baseline, so records already below the line don't fire.
 
 ## Scoping a table's rows with a segment
 

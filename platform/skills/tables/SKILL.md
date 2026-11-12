@@ -68,7 +68,9 @@ the array you send instead of the stored one:
 **2. A table compiles into the org's semantic model.** RevOS generates a
 Cube **view** per table, `model_<id, - → _>`, from its streams and external
 columns, plus its stored columns and `scores` through the table's own cube
-(`model_stream_<id, - → _>___local`, see columns.md). The server doesn't
+(`model_stream_<id, - → _>___local`, see columns.md), and, for a scored
+table, the parts of its latest score as `scores__<member>` through its
+scores cube (`model_stream_<id, - → _>___scores`). The server doesn't
 check them on save. Any of these breaks every table, segment, and
 query in the org until it's fixed:
 
@@ -159,15 +161,17 @@ deleted, and there is no undo. It takes with it:
 - the stored column values and the action results;
 - the action-run history and the action columns' schedules;
 - the scores and the change history;
-- the table's views, its view in the semantic model, and its own cube.
+- the table's views, its view in the semantic model, its own cube and its
+  scores cube.
 
 So never delete on an inference. Before the call:
 
 1. Read the table and name it back to the user: what a row is, how many
    columns, which are stored or action columns, and whether it is scored.
-2. Check what reads the table's cubes: its view `model_<id, - → _>` and,
-   if it has stored columns or scores, its own cube
-   `model_stream_<id, - → _>___local`. Look for either name in:
+2. Check what reads the table's cubes: its view `model_<id, - → _>`, its
+   own cube `model_stream_<id, - → _>___local` if it has stored columns or
+   scores, and its scores cube `model_stream_<id, - → _>___scores` if it is
+   scored (a segment on scores reads it). Look for any of these names in:
    - the other tables' `streams`, ids and `joinPath`s
      (`fields: "id,name,streams"`);
    - the segments' `cubes` and `filter` (list full records: neither is in

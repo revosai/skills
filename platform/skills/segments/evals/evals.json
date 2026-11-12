@@ -62,6 +62,23 @@
         "Read the segment's usageCount, or listed views filtered by its segmentId, before replying",
         "Reply says the delete can't be undone and asks the user to confirm deleting this segment"
       ]
+    },
+    {
+      "id": 5,
+      "eval_name": "score-below-threshold",
+      "prompt": "Make a segment \"[skill-eval] Low scorers\" of the records of my most recently created scored table whose score is low, so a routine can react when a record falls into it.",
+      "expected_output": "Finds a scored table and its [Scores] cube (model_stream_<table id>___scores) in meta. Roots the segment on the cube the table's rows come from (its first stream, or its own cube for a table on its own rows), adds the scores cube as a dotted joinPath from that root, and filters on the scores cube's score member EQUAL low (or a points threshold it checked against total_points). DYNAMIC, and explains that it changes when the scores are recomputed and that its first evaluation is a baseline.",
+      "files": [],
+      "expectations": [
+        "Created exactly one segment (one api_write without id on resource segments)",
+        "type is DYNAMIC",
+        "cubes[0] is the cube the table's rows come from, not the scores cube",
+        "cubes includes a joinPath ending in the table's ___scores cube, starting at the root",
+        "The filter's condition is on a member of the ___scores cube (score EQUAL low, or points compared with a number), with no member name built from a group's or feature's name",
+        "Read the scores cube's members from meta before writing the filter",
+        "Reply says the segment follows the scores, which are recomputed twice a day",
+        "Read the segment back by id after the last write"
+      ]
     }
   ]
 }

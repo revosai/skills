@@ -30,8 +30,8 @@ Look the record up in the semantic model, not in `action-runs`. Its cube is
 the source system's cube for that record type: for a HubSpot deal,
 `hubspot_deals`. Pick it from the catalogue,
 `api_read { "resource": "cubes", "method": "meta", "params": { "fields": "name,title,description", "pageSize": 1000 } }`
-— the business cube, not an internal one (`[Table] …`, `[Segment] …`,
-`model_stream_…___local`). Read its primary-key dimension, the one `meta`
+— the business cube, not an internal one (`[Table] …`, `[Scores] …`,
+`[Segment] …`, `model_stream_…`). Read its primary-key dimension, the one `meta`
 marks `primaryKey: true`, from
 `api_read { "resource": "cubes", "method": "meta", "params": { "filter": "name == \"<cube>\"" } }`.
 Then one exact query:
