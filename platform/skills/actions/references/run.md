@@ -54,7 +54,11 @@ queued; `parentId` is shared by every run this request started and is
 absent when nothing ran (`rowsCount: 0` — no row matched, so check the
 ids before trying again).
 
-The runs themselves take time. Follow them with:
+The runs themselves take time: don't report the result until they have
+finished. If you can let time pass (a `sleep` tool, or a sleep in a
+shell), wait about 15 seconds before the first check and again between
+checks; if you can't, check once and say the runs are still going. Follow
+them with:
 
 ```json
 api_read { "resource": "action-runs",
