@@ -138,9 +138,11 @@ that status.
 Tell the user what you're waiting for and roughly how long it usually
 takes. Then:
 
-- If you can let time pass (a sleep in a shell tool), wait about the usual
-  duration before the first check (with none, start at once), then 20–30
-  seconds between checks.
+- If you can let time pass (a `sleep` tool, or a sleep in a shell), use
+  it: wait about the usual duration before the first check (with none,
+  start at once), then 20–30 seconds between checks, until the sync is
+  done. A wait cut short (a new message) is not a reason to stop
+  following it: once you have answered, wait again.
 - If you can't, check once. Still running: tell the user how long it
   usually takes and to ask you to check again. Don't poll in a loop: checks
   with no time between them all see the same answer.
