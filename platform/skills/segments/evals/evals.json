@@ -5,7 +5,7 @@
       "id": 1,
       "eval_name": "multi-cube-create",
       "prompt": "Can you save a segment called \"[skill-eval] Enterprise with active Stripe\" — our organizations on the ENTERPRISE plan that also have an active Stripe subscription?",
-      "expected_output": "A DYNAMIC segment rooted on the organizations cube (primaryKeyDimension set), with a second cubes entry for the subscriptions cube as a dotted join path from the root, and an AND filter of plan = ENTERPRISE and subscription status = active, using member names and stored values read from the org's own cubes. The reply explains the root, conditions, type, and that it is PENDING until evaluated.",
+      "expected_output": "A DYNAMIC segment rooted on the organizations cube (primaryKeyDimension set), with a second cubes entry for the subscriptions cube as a dotted join path from the root, and an AND filter of plan = ENTERPRISE and subscription status = active, using member names and stored values read from the org's own cubes. The reply explains the root, conditions, type, and that it is being evaluated on its own.",
       "files": [],
       "expectations": [
         "Created exactly one segment (one api_write without id on resource segments)",
@@ -13,7 +13,7 @@
         "cubes[0] is the organizations cube, with primaryKeyDimension set to its primary-key dimension",
         "cubes includes a dotted joinPath from the organizations root to the subscriptions cube",
         "filter ANDs plan EQUAL ENTERPRISE with subscription status EQUAL active, using the stored spellings",
-        "Reply tells the user the segment is PENDING until evaluated",
+        "Reply tells the user the segment is being evaluated on its own, without asking them to press Evaluate",
         "Checked stored values with a cubes query on the plan and/or subscription-status dimension before the first write",
         "Read the segment back by id after the last write"
       ]

@@ -185,18 +185,17 @@ conditions.
 
 ### 4. Choose `type` — DYNAMIC unless the user insists
 
-- **DYNAMIC** (use this by default): re-evaluated automatically by RevOS a
-  few times a day (every 6 hours), so it follows the data. A new DYNAMIC
-  segment shows `status: "PENDING"` until the next scheduled evaluation —
-  say so, so the user isn't surprised by `objectCount` being empty right
-  after saving. An edited one keeps its old status and `objectCount` until
-  then, though a table scoped by it uses the new filter at once.
-- **STATIC** freezes the membership at evaluation time — but evaluating is
-  something the MCP tools can't trigger. A STATIC segment created here stays
-  `PENDING` until someone presses *Evaluate* in the RevOS UI, and while it's
-  pending a table scoped to it shows **all** rows, unfiltered. Only create
-  one when the user explicitly asks for a frozen snapshot, and tell them to
-  run *Evaluate* in the UI before relying on it.
+- **DYNAMIC** (use this by default): re-evaluated automatically by RevOS
+  every 6 hours, so it follows the data.
+- **STATIC** freezes the membership at evaluation time, and keeps it until
+  its conditions change or someone presses *Evaluate* in the RevOS UI. While
+  it isn't `READY`, a table scoped to it shows **all** rows, unfiltered. Only
+  create one when the user explicitly asks for a frozen snapshot.
+
+Either way RevOS evaluates a segment on its own as soon as it is created,
+or its `filter` or `cubes` change: it shows `status: "PENDING"`, then
+`EVALUATING`, then `READY` with its `objectCount` — usually within seconds,
+longer on a big table. Nothing in these tools has to trigger it.
 
 `type` can't be changed after creation.
 
@@ -215,8 +214,9 @@ write didn't land the way you intended — fix the call rather than reporting
 success.
 
 Then tell the user, in a sentence or two: the root (what one member is), the
-conditions in plain language, the type, and that it's `PENDING` until
-evaluated. If you made a judgment call (a measure instead of a fanning
+conditions in plain language, the type, and that it's being evaluated —
+`api_read` it again after a few seconds to report its `objectCount` once
+it's `READY`. If you made a judgment call (a measure instead of a fanning
 dimension, a particular join path), say which and why.
 
 ## Editing a segment
@@ -252,10 +252,12 @@ condition you left out is gone.
    change landed.
 
 Every update bumps the segment's `version` (the UI can restore older
-versions — worth mentioning if the user is nervous about an edit). A STATIC
-segment goes back to `PENDING` when its filter or cubes change, and every
-table scoped by it then shows **all** rows until someone presses *Evaluate*
-in the UI — warn the user before such an edit. If the segment scopes a
+versions — worth mentioning if the user is nervous about an edit). A segment
+goes back to `PENDING` when its filter or cubes change (a rename or a new
+description doesn't count) and is evaluated again on its own. For a STATIC
+one that rebuilds its frozen membership from today's data, and every table
+scoped by it shows **all** rows until it's `READY` again — say so before such
+an edit. If the segment scopes a
 table's default view, check that `meta` still compiles after the edit.
 
 ## Segment on a table's scores
@@ -318,7 +320,8 @@ and comes back on detach) — send `"filter": {}` with `segmentId` when the
 view has one. `"segmentId": null` detaches it. Use a segment whose root cube
 is the cube the table's rows come from (its main stream) — that's how the UI
 pairs them, and the server doesn't check it. If the segment is STATIC and
-not `READY`, warn that the table will show every row until it's evaluated.
+not `READY`, warn that the table shows every row until its evaluation, which
+runs on its own, has finished.
 Then check that `meta` still compiles: the segment's conditions and joins
 are now part of the table's view.
 
@@ -326,14 +329,17 @@ are now part of the table's view.
 
 `api_read` the segment and look at `status`:
 
-- `PENDING` — saved, not evaluated yet. Normal right after a create or edit;
-  DYNAMIC catches up on its own schedule, STATIC needs *Evaluate* in the UI.
-- `EVALUATING` — in progress; check back.
+- `PENDING` — saved, its evaluation queued. Normal for a few seconds after a
+  create or a change of conditions; it runs on its own. Still `PENDING` long
+  after (an hour, say) means the evaluation never started — the next
+  scheduled run (every 6 hours) picks it up, or the user can press
+  *Evaluate* in the UI.
+- `EVALUATING` — in progress, or retrying after a failed attempt; check back.
 - `FAILED` — `evaluationError` has the reason, usually Cube's. The common
   causes, in order of likelihood: a member that doesn't exist (re-read the
   cubes' `meta` and correct the name), or a condition value of the wrong
-  kind for its member. Fix the
-  segment with an edit as above; it'll be re-evaluated on the next run.
+  kind for its member. `FAILED` is set only once every retry has failed. Fix
+  the segment with an edit as above; the edit queues a new evaluation.
 - `READY` but the wrong members or count — the usual suspects are a fanning
   dimension condition (see step 3), a root cube that doesn't match what the
   user meant by "member", or a join path that took the other route — or
@@ -388,5 +394,5 @@ so, and ask before deleting it.
 
 A `403` on any write — create, update, delete, or attaching to a view — means
 the user's role can't change segments; it needs Member. Not reachable
-through these tools: evaluating, duplicating, and restoring an older
-version — send the user to the RevOS UI.
+through these tools: re-evaluating a segment whose conditions didn't change,
+duplicating, and restoring an older version — send the user to the RevOS UI.
